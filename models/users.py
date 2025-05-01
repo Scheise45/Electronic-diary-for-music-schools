@@ -6,12 +6,12 @@ from .base import Base
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True)
-    login = Column(String)
-    password = Column(String)
+    login = Column(String(50))  # Указываем длину
+    password = Column(String(255))  # Для хэшей паролей
     role_id = Column(Integer, ForeignKey("roles.id"))
-    full_name = Column(String)
-    phone = Column(String)
-    email = Column(String)
+    full_name = Column(String(100))
+    phone = Column(String(20))
+    email = Column(String(100))
 
 
 class Student(Base):

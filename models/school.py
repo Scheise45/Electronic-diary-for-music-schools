@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Date
+from sqlalchemy import Column, Integer, String, ForeignKey, Date, Boolean, Text
 from .base import Base
 
 
@@ -10,7 +10,7 @@ class StudentYear(Base):
     program_id = Column(Integer, ForeignKey("programs.id"))
     instrument_id = Column(Integer, ForeignKey("instruments.id"))
     class_group = Column(Integer)
-    class_letter = Column(String)
+    class_letter = Column(String(10))  # Например, "А", "Б"
 
 
 class Grade(Base):
@@ -20,7 +20,7 @@ class Grade(Base):
     date = Column(Date)
     subject_id = Column(Integer, ForeignKey("subjects.id"))
     lesson_number = Column(Integer)
-    grade = Column(String)
+    grade = Column(String(10))  # Уточняем длину для оценок
 
 
 class Attendance(Base):
@@ -30,7 +30,7 @@ class Attendance(Base):
     date = Column(Date)
     subject_id = Column(Integer, ForeignKey("subjects.id"))
     lesson_number = Column(Integer)
-    is_absent = Column(Integer)  # 0 или 1
+    is_absent = Column(Boolean)  # Изменено на Boolean
 
 
 class Schedule(Base):
@@ -40,7 +40,7 @@ class Schedule(Base):
     day_of_week = Column(Integer)
     lesson_number = Column(Integer)
     class_group = Column(Integer)
-    class_letter = Column(String)
+    class_letter = Column(String(10))
     subject_id = Column(Integer, ForeignKey("subjects.id"))
     teacher_id = Column(Integer, ForeignKey("teachers.id"))
 
@@ -51,6 +51,6 @@ class Homework(Base):
     school_year_id = Column(Integer, ForeignKey("school_years.id"))
     date = Column(Date)
     class_group = Column(Integer)
-    class_letter = Column(String)
+    class_letter = Column(String(10))
     subject_id = Column(Integer, ForeignKey("subjects.id"))
-    text = Column(String)
+    text = Column(Text)  # Изменено на Text для длинных текстов
