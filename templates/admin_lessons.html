@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ru" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <title>Редактирование предметов | Музыкальная школа</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <style>
+    .custom-table { background-color: #ffffff !important; }
+    .custom-table thead { background-color: #e9ecef !important; }
+    body.light-mode { background-color: #f8f9fa !important; color: #212529 !important; }
+    body.dark-mode { background-color: #212529 !important; color: #f8f9fa !important; }
+    .theme-card.light-mode { background-color: #ffffff !important; color: #212529 !important; }
+    .theme-card.dark-mode { background-color: #343a40 !important; color: #f8f9fa !important; }
+    .custom-table.light-mode td, .custom-table.light-mode th { color: #212529 !important; }
+    .custom-table.dark-mode td, .custom-table.dark-mode th { color: #f8f9fa !important; }
+    .table td, .table th { vertical-align: middle; }
+    .form-inline-edit input, .form-inline-edit select { width: 100%; }
+  </style>
+</head>
+<body class="dark-mode">
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="#">Электронный дневник</a>
+    <div class="d-flex align-items-center gap-2">
+      <div class="dropdown">
+        <button class="btn btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+          {{ current_user.role|capitalize }}
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li><a class="dropdown-item" href="#">Ученик</a></li>
+          <li><a class="dropdown-item" href="#">Учитель</a></li>
+          <li><a class="dropdown-item" href="#">Администратор</a></li>
+        </ul>
+      </div>
+
+      <div class="dropdown">
+        <button class="btn btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+          {{ current_user.name }}
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li><a class="dropdown-item" href="/logout">Сменить пользователя</a></li>
+        </ul>
+      </div>
+
+      <button class="btn btn-outline-light" id="toggle-theme">🌙</button>
+  </div>
+</nav>
+
+<div class="container py-5">
+  <div class="card shadow rounded-4 p-4 theme-card dark-mode">
+    <h3 class="mb-4">Редактирование предметов</h3>
+
+    <div class="table-responsive">
+      <table class="table table-bordered table-hover table-striped align-middle text-center custom-table dark-mode" id="subjects-table">
+        <thead>
+          <tr>
+            <th>Кабинет</th>
+            <th>Учитель</th>
+            <th>Предмет</th>
+            <th>Группы/ученики</th>
+            <th>Действия</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for subject in subjects %}
+          <tr data-id="{{ subject.id }}">
+            <td class="cell-classroom">{{ subject.classroom }}</td>
+            <td class="cell-teacher">{{ subject.teacher }}</td>
+            <td class="cell-name">{{ subject.name }}</td>
+            <td class="cell-members">{{ (subject.groups + subject.students)|join(', ') }}</td>
+            <td class="actions">
+              <button class="btn btn-sm btn-warning btn-edit">✏️</button>
+              <form method="post" action="/admin/delete_subject/{{ subject.id }}" class="d-inline" onsubmit="return confirm('Удалить предмет?');">
+                <button type="submit" class="btn btn-sm btn-danger">🗑</button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" class="text-muted">Пока что предметов нет.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <hr class="my-4">
+    <h5 class="mb-3">Добавить новый предмет</h5>
+    <form method="post" action="/admin/add_subject" class="row g-3">
+      <div class="col-md-2"><input type="text" name="classroom" class="form-control" placeholder="Кабинет" required></div>
+      <div class="col-md-2">
+        <select name="teacher" class="form-select" required>
+          <option disabled selected>Преподаватель</option>
+          {% for t in all_teachers %}
+            <option>{{ t }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2"><input type="text" name="name" class="form-control" placeholder="Предмет" required></div>
+      <div class="col-md-4"><input type="text" name="members" class="form-control" placeholder="Группы/ученики (через запятую)"></div>
+      <div class="col-md-2 text-end"><button type="submit" class="btn btn-primary w-100">Добавить</button></div>
+    </form>
+  </div>
+</div>
+
+<script>
+  const toggleBtn = document.getElementById('toggle-theme');
+  const html = document.documentElement;
+  const body = document.body;
+  const card = document.querySelector('.theme-card');
+  const table = document.getElementById('subjects-table');
+
+  toggleBtn.addEventListener('click', () => {
+    const currentTheme = html.getAttribute('data-bs-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    html.setAttribute('data-bs-theme', newTheme);
+    toggleBtn.textContent = newTheme === 'dark' ? '🌙' : '☀️';
+    body.classList.toggle('dark-mode', newTheme === 'dark');
+    body.classList.toggle('light-mode', newTheme === 'light');
+    card.classList.toggle('dark-mode', newTheme === 'dark');
+    card.classList.toggle('light-mode', newTheme === 'light');
+    table.classList.toggle('dark-mode', newTheme === 'dark');
+    table.classList.toggle('light-mode', newTheme === 'light');
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.btn-edit').forEach(button => {
+      button.addEventListener('click', function () {
+        const row = this.closest('tr');
+        const id = row.dataset.id;
+
+        if (row.classList.contains('editing')) {
+          // Check if saving or canceling
+          if (this.innerText === '💾') {
+            // Save changes
+            const data = {
+              classroom: row.querySelector('input[name="classroom"]').value,
+              teacher: row.querySelector('select[name="teacher"]').value,
+              name: row.querySelector('input[name="name"]').value,
+              members: row.querySelector('input[name="members"]').value
+            };
+
+            fetch(`/admin/update_subject/${id}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(data)
+            }).then(() => location.reload());
+          } else {
+            // Cancel editing
+            const classroom = row.querySelector('input[name="classroom"]').value;
+            const teacher = row.querySelector('select[name="teacher"]').value;
+            const name = row.querySelector('input[name="name"]').value;
+            const members = row.querySelector('input[name="members"]').value;
+
+            row.querySelector('.cell-classroom').innerHTML = classroom;
+            row.querySelector('.cell-teacher').innerHTML = teacher;
+            row.querySelector('.cell-name').innerHTML = name;
+            row.querySelector('.cell-members').innerHTML = members;
+
+            row.classList.remove('editing');
+            this.classList.remove('btn-danger');
+            this.classList.add('btn-warning');
+            this.innerText = '✏️';
+          }
+        } else {
+          // Enter edit mode
+          row.classList.add('editing');
+
+          const classroom = row.querySelector('.cell-classroom').innerText.trim();
+          const teacher = row.querySelector('.cell-teacher').innerText.trim();
+          const name = row.querySelector('.cell-name').innerText.trim();
+          const members = row.querySelector('.cell-members').innerText.trim();
+
+          row.querySelector('.cell-classroom').innerHTML = `<input name="classroom" class="form-control" value="${classroom}">`;
+          row.querySelector('.cell-teacher').innerHTML = `
+            <select name="teacher" class="form-select">
+              {% for t in all_teachers %}
+                <option ${teacher === '{{ t }}' ? 'selected' : ''}>{{ t }}</option>
+              {% endfor %}
+            </select>`;
+          row.querySelector('.cell-name').innerHTML = `<input name="name" class="form-control" value="${name}">`;
+          row.querySelector('.cell-members').innerHTML = `<input name="members" class="form-control" value="${members}">`;
+
+          this.classList.remove('btn-warning');
+          this.classList.add('btn-success');
+          this.innerText = '💾';
+
+          // Add cancel button
+          const cancelButton = document.createElement('button');
+          cancelButton.className = 'btn btn-sm btn-danger ms-1';
+          cancelButton.innerText = '❌';
+          this.parentNode.insertBefore(cancelButton, this.nextSibling);
+
+          cancelButton.addEventListener('click', () => {
+            row.querySelector('.btn-edit').click();
+          });
+        }
+      });
+    });
+  });
+</script>
+
+</body>
+</html>
