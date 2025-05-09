@@ -1,5 +1,6 @@
 from models import session
-from models.reference import Role, SchoolYear, Department, Instrument, Program, Subject, ProgramSubject
+from models.reference import (Role, SchoolYear, Department, Instrument,
+                              Program, Subject, ProgramSubject)
 from models.users import User, Student, Parent, StudentParent, Teacher
 from models.school import StudentYear
 from datetime import date
@@ -65,7 +66,8 @@ def add_user(login, password, role_id, full_name, phone, email):
     return user.id
 
 
-def add_student(full_name, birth_date, phone, email, year_id, program_id, instrument_id):
+def add_student(full_name, birth_date, phone, email, year_id, program_id,
+                instrument_id):
     user_id = add_user(f"{full_name}_login", "pass",
                        1, full_name, phone, email)
     student = Student(user_id=user_id, birth_date=birth_date)
