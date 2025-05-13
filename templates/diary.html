@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ru" data-bs-theme="dark">
+
 <head>
   <meta charset="UTF-8">
   <title>Кабинет ученика | Музыкальная школа</title>
@@ -13,149 +14,154 @@
     }
   </style>
 </head>
+
 <body>
 
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-  <div class="container-fluid">
-    <div class="dropdown">
-      <button class="navbar-brand btn btn-link text-white dropdown-toggle no-hover" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-        Электронный дневник
+  <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container-fluid">
+      <div class="dropdown">
+        <button class="navbar-brand btn btn-link text-white dropdown-toggle no-hover" type="button"
+          data-bs-toggle="dropdown" aria-expanded="false">
+          Электронный дневник
+        </button>
+        <ul class="dropdown-menu">
+          <li><a class="dropdown-item" href="/student/grades">🏆 Оценки</a></li>
+        </ul>
+      </div>
+
+      <div class="d-flex align-items-center gap-2 ms-auto">
+        <div class="dropdown">
+          <button class="btn btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+            {{ current_user.role|capitalize }}
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="#">Ученик</a></li>
+            <li><a class="dropdown-item" href="#">Учитель</a></li>
+            <li><a class="dropdown-item" href="#">Администратор</a></li>
+          </ul>
+        </div>
+
+        <div class="dropdown">
+          <button class="btn btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+            {{ current_user.name }}
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="/logout">Сменить пользователя</a></li>
+          </ul>
+        </div>
+
+        <button class="btn btn-outline-light" id="toggle-theme">🌙</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container my-4">
+    <h2 class="mb-4">Расписание</h2>
+
+    <!-- Понедельник -->
+    <div class="mb-3">
+      <button class="btn theme-button no-hover w-100 text-start" type="button" data-bs-toggle="collapse"
+        data-bs-target="#monday">
+        Понедельник
       </button>
-      <ul class="dropdown-menu">
-        <li><a class="dropdown-item" href="/student/grades">🏆 Оценки</a></li>
-      </ul>
-    </div>
-
-    <div class="d-flex align-items-center gap-2 ms-auto">
-      <div class="dropdown">
-        <button class="btn btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
-          {{ current_user.role|capitalize }}
-        </button>
-        <ul class="dropdown-menu dropdown-menu-end">
-          <li><a class="dropdown-item" href="#">Ученик</a></li>
-          <li><a class="dropdown-item" href="#">Учитель</a></li>
-          <li><a class="dropdown-item" href="#">Администратор</a></li>
-        </ul>
+      <div class="collapse show" id="monday">
+        <table class="table table-bordered table-hover mt-2 theme-table">
+          <thead class="table-secondary">
+            <tr>
+              <th>Время</th>
+              <th>Предмет</th>
+              <th>Домашнее задание</th>
+              <th>Файл для выполнения</th>
+              <th>Оценка</th>
+              <th>Преподаватель</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for lesson in schedule %}
+            <tr>
+              <td>{{lesson.start_time}} - {{lesson.end_time}}</td>
+              <td>{{ lesson.subject }}</td>
+              <td>{{lesson.homework}}</td>
+              <td><a href="#">{{lesson.file}}</a></td>
+              <td>{{lesson.grade}}</td>
+              <td>{{lesson.teacher}}</td>
+            </tr>
+            {% else %}
+          </tbody>
+        </table>
       </div>
+    </div>
 
-      <div class="dropdown">
-        <button class="btn btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
-          {{ current_user.name }}
-        </button>
-        <ul class="dropdown-menu dropdown-menu-end">
-          <li><a class="dropdown-item" href="/logout">Сменить пользователя</a></li>
-        </ul>
+    <!-- Вторник -->
+    <div class="mb-3">
+      <button class="btn theme-button no-hover w-100 text-start" type="button" data-bs-toggle="collapse"
+        data-bs-target="#tuesday">
+        Вторник
+      </button>
+      <div class="collapse" id="tuesday">
+        <table class="table table-bordered table-hover mt-2 theme-table">
+          <thead class="table-secondary">
+            <tr>
+              <th>Время</th>
+              <th>Предмет</th>
+              <th>Домашнее задание</th>
+              <th>Файл для выполнения</th>
+              <th>Оценка</th>
+              <th>Преподаватель</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for lesson in schedule %}
+            <tr>
+              <td>{{lesson.start_time}} - {{lesson.end_time}}</td>
+              <td>{{ lesson.subject }}</td>
+              <td>{{lesson.homework}}</td>
+              <td><a href="#">{{lesson.file}}</a></td>
+              <td>{{lesson.grade}}</td>
+              <td>{{lesson.teacher}}</td>
+            </tr>
+            {% else %}
+          </tbody>
+        </table>
       </div>
-
-      <button class="btn btn-outline-light" id="toggle-theme">🌙</button>
-    </div>
-  </div>
-</nav>
-
-<div class="container my-4">
-  <h2 class="mb-4">Расписание</h2>
-
-  <!-- Понедельник -->
-  <div class="mb-3">
-    <button class="btn theme-button no-hover w-100 text-start" type="button" data-bs-toggle="collapse" data-bs-target="#monday">
-      Понедельник
-    </button>
-    <div class="collapse show" id="monday">
-      <table class="table table-bordered table-hover mt-2 theme-table">
-        <thead class="table-secondary">
-          <tr>
-            <th>Время</th>
-            <th>Предмет</th>
-            <th>Домашнее задание</th>
-            <th>Файл для выполнения</th>
-            <th>Оценка</th>
-            <th>Преподаватель</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for lesson in schedule %}
-          <tr>
-            <td>{{lesson.start_time}} - {{lesson.end_time}}</td>
-            <td>{{ lesson.subject }}</td>
-            <td>{{lesson.homework}}</td>
-            <td><a href="#">{{lesson.file}}</a></td>
-            <td>{{lesson.grade}}</td>
-            <td>{{lesson.teacher}}</td>
-          </tr>
-          {% else %}
-        </tbody>
-      </table>
     </div>
   </div>
 
-  <!-- Вторник -->
-  <div class="mb-3">
-    <button class="btn theme-button no-hover w-100 text-start" type="button" data-bs-toggle="collapse" data-bs-target="#tuesday">
-      Вторник
-    </button>
-    <div class="collapse" id="tuesday">
-      <table class="table table-bordered table-hover mt-2 theme-table">
-        <thead class="table-secondary">
-          <tr>
-            <th>Время</th>
-            <th>Предмет</th>
-            <th>Домашнее задание</th>
-            <th>Файл для выполнения</th>
-            <th>Оценка</th>
-            <th>Преподаватель</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for lesson in schedule %}
-          <tr>
-            <td>{{lesson.start_time}} - {{lesson.end_time}}</td>
-            <td>{{ lesson.subject }}</td>
-            <td>{{lesson.homework}}</td>
-            <td><a href="#">{{lesson.file}}</a></td>
-            <td>{{lesson.grade}}</td>
-            <td>{{lesson.teacher}}</td>
-          </tr>
-          {% else %}
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div>
+  <script>
+    const toggleBtn = document.getElementById('toggle-theme');
+    toggleBtn.addEventListener('click', () => {
+      const html = document.documentElement;
+      const currentTheme = html.getAttribute('data-bs-theme');
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-bs-theme', newTheme);
+      toggleBtn.textContent = newTheme === 'dark' ? '🌙' : '☀️';
 
-<script>
-  const toggleBtn = document.getElementById('toggle-theme');
-  toggleBtn.addEventListener('click', () => {
-    const html = document.documentElement;
-    const currentTheme = html.getAttribute('data-bs-theme');
-    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-    html.setAttribute('data-bs-theme', newTheme);
-    toggleBtn.textContent = newTheme === 'dark' ? '🌙' : '☀️';
+      // Переключение таблиц
+      document.querySelectorAll('.theme-table').forEach(table => {
+        table.classList.remove('table-dark', 'table-light');
+        table.classList.add(newTheme === 'dark' ? 'table-dark' : 'table-light');
+      });
 
-    // Переключение таблиц
-    document.querySelectorAll('.theme-table').forEach(table => {
-      table.classList.remove('table-dark', 'table-light');
-      table.classList.add(newTheme === 'dark' ? 'table-dark' : 'table-light');
+      // Переключение кнопок дней недели
+      document.querySelectorAll('.theme-button').forEach(btn => {
+        btn.classList.remove('btn-outline-light', 'btn-outline-dark');
+        btn.classList.add(newTheme === 'dark' ? 'btn-outline-light' : 'btn-outline-dark');
+      });
     });
 
-    // Переключение кнопок дней недели
-    document.querySelectorAll('.theme-button').forEach(btn => {
-      btn.classList.remove('btn-outline-light', 'btn-outline-dark');
-      btn.classList.add(newTheme === 'dark' ? 'btn-outline-light' : 'btn-outline-dark');
-    });
-  });
+    // Инициализация по текущей теме
+    document.addEventListener('DOMContentLoaded', () => {
+      const theme = document.documentElement.getAttribute('data-bs-theme');
 
-  // Инициализация по текущей теме
-  document.addEventListener('DOMContentLoaded', () => {
-    const theme = document.documentElement.getAttribute('data-bs-theme');
+      document.querySelectorAll('.theme-table').forEach(table => {
+        table.classList.add(theme === 'dark' ? 'table-dark' : 'table-light');
+      });
 
-    document.querySelectorAll('.theme-table').forEach(table => {
-      table.classList.add(theme === 'dark' ? 'table-dark' : 'table-light');
+      document.querySelectorAll('.theme-button').forEach(btn => {
+        btn.classList.add(theme === 'dark' ? 'btn-outline-light' : 'btn-outline-dark');
+      });
     });
-
-    document.querySelectorAll('.theme-button').forEach(btn => {
-      btn.classList.add(theme === 'dark' ? 'btn-outline-light' : 'btn-outline-dark');
-    });
-  });
-</script>
+  </script>
 </body>
+
 </html>
