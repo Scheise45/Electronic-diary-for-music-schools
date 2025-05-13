@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ru" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <title>Кабинет ученика | Музыкальная школа</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <style>
+    .btn.no-hover:hover {
+      color: inherit;
+      background-color: inherit;
+      border-color: inherit;
+    }
+  </style>
+</head>
+<body class="dark-mode">
+  <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+	  <div class="container-fluid">
+	    <div class="dropdown">
+	      <button class="navbar-brand btn btn-link text-white dropdown-toggle no-hover" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+	        Электронный дневник
+	      </button>
+	      <ul class="dropdown-menu">
+	        <li><a class="dropdown-item" href="/student/grades">📚 Домашнее задание</a></li>
+	        <li><a class="dropdown-item" href="/student/grades">📅 Моё расписание</a></li>
+	      </ul>
+	    </div>
+
+	    <div class="d-flex align-items-center gap-2 ms-auto">
+	      <div class="dropdown">
+	        <button class="btn btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+	          {{ current_user.role|capitalize }}
+	        </button>
+	        <ul class="dropdown-menu dropdown-menu-end">
+	          <li><a class="dropdown-item" href="#">Ученик</a></li>
+	          <li><a class="dropdown-item" href="#">Учитель</a></li>
+	          <li><a class="dropdown-item" href="#">Администратор</a></li>
+	        </ul>
+	      </div>
+
+	      <div class="dropdown">
+	        <button class="btn btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+	          {{ current_user.name }}
+	        </button>
+	        <ul class="dropdown-menu dropdown-menu-end">
+	          <li><a class="dropdown-item" href="/logout">Сменить пользователя</a></li>
+	        </ul>
+	      </div>
+
+	      <button class="btn btn-outline-light" id="toggle-theme">🌙</button>
+	    </div>
+	  </div>
+	</nav>
+  <div class="container py-5">
+    <div class="card shadow rounded-4 p-4 theme-card dark-mode">
+      <h3 class="mb-4">Оценки и посещаемость</h3>
+
+      <!-- Фильтр по группе -->
+      <div class="row mb-4">
+        <div class="col-md-4">
+          <label for="group-filter" class="form-label">Фильтр по группе:</label>
+          <select class="form-select" id="group-filter">
+            <option value="all">Все группы</option>
+            {% for group in groups %}
+              <option value="{{ group }}">{{ group }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <!-- Таблица -->
+      <div class="table-responsive">
+        <table class="table table-bordered table-hover custom-table align-middle" id="students-grades-table">
+          <thead>
+            <tr>
+              <th>ФИО ученика</th>
+              {% for date in dates %}
+                <th colspan="2">{{ date }}</th>
+              {% endfor %}
+              <th>Средний балл</th>
+            </tr>
+            <tr>
+              <th></th>
+              {% for date in dates %}
+                <th>Посещ.</th>
+                <th>Оценка</th>
+              {% endfor %}
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for student in students %}
+            <tr data-student="{{ student.id }}" data-group="{{ student.group }}">
+              <td>{{ student.name }}</td>
+              {% for date in dates %}
+                <td>
+                  <select class="form-select form-select-sm attendance-select" name="attendance-{{ student.id }}-{{ date }}" data-type="attendance">
+                    <option value="">—</option>
+                    <option value="1">✔</option>
+                    <option value="0">✘</option>
+                  </select>
+                </td>
+                <td>
+                  <input type="number" class="form-control form-control-sm grade-input" name="grade-{{ student.id }}-{{ date }}" min="1" max="5" data-type="grade">
+                </td>
+              {% endfor %}
+              <td class="avg-grade" data-student-id="{{ student.id }}">—</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Скрипты -->
+  <script>
+    const toggleBtn = document.getElementById('toggle-theme');
+    const html = document.documentElement;
+    const body = document.body;
+    const card = document.querySelector('.theme-card');
+
+    toggleBtn.addEventListener('click', () => {
+      const currentTheme = html.getAttribute('data-bs-theme');
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+
+      html.setAttribute('data-bs-theme', newTheme);
+      toggleBtn.textContent = newTheme === 'dark' ? '🌙' : '☀️';
+      body.classList.toggle('dark-mode', newTheme === 'dark');
+      body.classList.toggle('light-mode', newTheme === 'light');
+      card.classList.toggle('dark-mode', newTheme === 'dark');
+      card.classList.toggle('light-mode', newTheme === 'light');
+    });
+
+    document.getElementById('group-filter').addEventListener('change', function () {
+      const selectedGroup = this.value;
+      document.querySelectorAll('#students-grades-table tbody tr').forEach(row => {
+        const group = row.getAttribute('data-group');
+        row.style.display = (selectedGroup === 'all' || group === selectedGroup) ? '' : 'none';
+      });
+    });
+  </script>
+</body>
+</html>
