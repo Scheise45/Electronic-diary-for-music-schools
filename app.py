@@ -7,12 +7,14 @@ import logging
 from datetime import datetime
 
 # Настройка логирования
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # Инициализация приложения
 app = Flask(__name__, template_folder='templates')
-app.secret_key = os.getenv('FLASK_SECRET_KEY', 'a1b2c3d4e5f67890abcdef1234567890abcdef123456')
+app.secret_key = os.getenv(
+    'FLASK_SECRET_KEY', 'a1b2c3d4e5f67890abcdef1234567890abcdef123456')
 
 # Настройка Flask-Login
 login_manager = LoginManager()
@@ -20,6 +22,8 @@ login_manager.init_app(app)
 login_manager.login_view = 'login'
 
 # Проверка существования шаблона
+
+
 def template_exists(template_name):
     try:
         app.jinja_env.get_template(template_name)
@@ -30,6 +34,8 @@ def template_exists(template_name):
         return False
 
 # Класс пользователя для Flask-Login
+
+
 class LoginUser(UserMixin):
     def __init__(self, id, login, role_id, full_name, role_name):
         self.id = id
@@ -42,6 +48,8 @@ class LoginUser(UserMixin):
         return str(self.id)
 
 # Загрузка пользователя
+
+
 @login_manager.user_loader
 def load_user(user_id):
     db_session = DBSession()
@@ -64,6 +72,8 @@ def load_user(user_id):
         db_session.close()
 
 # Главная страница
+
+
 @app.route('/')
 def index():
     logout_user()
@@ -73,6 +83,8 @@ def index():
     return render_template('index.html')
 
 # Страница входа
+
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
@@ -98,7 +110,8 @@ def login():
         try:
             user = db_session.query(User).filter_by(login=username).first()
             if user and user.password == password:  # Проверка без хеширования
-                role = db_session.query(Role).filter_by(id=user.role_id).first()
+                role = db_session.query(Role).filter_by(
+                    id=user.role_id).first()
                 login_user(LoginUser(
                     id=user.id,
                     login=user.login,
@@ -106,7 +119,8 @@ def login():
                     full_name=user.full_name,
                     role_name=role.name if role else 'Неизвестно'
                 ))
-                logger.info(f"Успешная авторизация: {username}, role_id: {user.role_id}")
+                logger.info(
+                    f"Успешная авторизация: {username}, role_id: {user.role_id}")
                 if user.role_id in [3, 4]:
                     return redirect(url_for('diary'))
                 logout_user()
@@ -124,10 +138,13 @@ def login():
     return render_template('login.html')
 
 # Страница дневника
+
+
 @app.route('/diary')
 @login_required
 def diary():
-    logger.info(f"Попытка открыть /diary для пользователя {current_user.login}, role_id: {current_user.role_id}")
+    logger.info(
+        f"Попытка открыть /diary для пользователя {current_user.login}, role_id: {current_user.role_id}")
     if current_user.role_id not in [3, 4]:
         logger.warning(f"Доступ запрещён для role_id: {current_user.role_id}")
         logout_user()
@@ -221,6 +238,8 @@ def diary():
     )
 
 # Выход
+
+
 @app.route('/logout')
 def logout():
     logout_user()
@@ -228,15 +247,19 @@ def logout():
     return redirect(url_for('index'))
 
 # Обработка ошибок
+
+
 @app.errorhandler(500)
 def internal_error(error):
     logger.error(f"Ошибка 500: {error}")
     return "Внутренняя ошибка сервера", 500
 
+
 @app.errorhandler(404)
 def not_found(error):
     logger.error(f"Ошибка 404: {error}")
     return "Страница не найдена", 404
+
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ru" data-bs-theme="dark">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,11 +15,13 @@
       background-color: inherit;
       border-color: inherit;
     }
+
     .table-container {
       margin-bottom: 1.5rem;
     }
   </style>
 </head>
+
 <body>
   <!-- Кнопка вызова календаря -->
   <div class="position-fixed bottom-0 end-0 m-4">
@@ -68,8 +71,8 @@
 
     <!-- Понедельник -->
     <div class="table-container">
-      <button class="btn btn-outline-light no-hover w-100 text-start mb-2" type="button" 
-              data-bs-toggle="collapse" data-bs-target="#monday" aria-expanded="true">
+      <button class="btn btn-outline-light no-hover w-100 text-start mb-2" type="button" data-bs-toggle="collapse"
+        data-bs-target="#monday" aria-expanded="true">
         Понедельник
       </button>
       <div class="collapse show" id="monday">
@@ -104,8 +107,8 @@
 
     <!-- Вторник -->
     <div class="table-container">
-      <button class="btn btn-outline-light no-hover w-100 text-start mb-2" type="button" 
-              data-bs-toggle="collapse" data-bs-target="#tuesday" aria-expanded="false">
+      <button class="btn btn-outline-light no-hover w-100 text-start mb-2" type="button" data-bs-toggle="collapse"
+        data-bs-target="#tuesday" aria-expanded="false">
         Вторник
       </button>
       <div class="collapse" id="tuesday">
@@ -140,8 +143,8 @@
 
     <!-- Среда -->
     <div class="table-container">
-      <button class="btn btn-outline-light no-hover w-100 text-start mb-2" type="button" 
-              data-bs-toggle="collapse" data-bs-target="#wednesday" aria-expanded="false">
+      <button class="btn btn-outline-light no-hover w-100 text-start mb-2" type="button" data-bs-toggle="collapse"
+        data-bs-target="#wednesday" aria-expanded="false">
         Среда
       </button>
       <div class="collapse" id="wednesday">
@@ -176,8 +179,8 @@
 
     <!-- Четверг -->
     <div class="table-container">
-      <button class="btn btn-outline-light no-hover w-100 text-start mb-2" type="button" 
-              data-bs-toggle="collapse" data-bs-target="#thursday" aria-expanded="false">
+      <button class="btn btn-outline-light no-hover w-100 text-start mb-2" type="button" data-bs-toggle="collapse"
+        data-bs-target="#thursday" aria-expanded="false">
         Четверг
       </button>
       <div class="collapse" id="thursday">
@@ -212,8 +215,8 @@
 
     <!-- Пятница -->
     <div class="table-container">
-      <button class="btn btn-outline-light no-hover w-100 text-start mb-2" type="button" 
-              data-bs-toggle="collapse" data-bs-target="#friday" aria-expanded="false">
+      <button class="btn btn-outline-light no-hover w-100 text-start mb-2" type="button" data-bs-toggle="collapse"
+        data-bs-target="#friday" aria-expanded="false">
         Пятница
       </button>
       <div class="collapse" id="friday">
@@ -248,8 +251,8 @@
 
     <!-- Суббота -->
     <div class="table-container">
-      <button class="btn btn-outline-light no-hover w-100 text-start mb-2" type="button" 
-              data-bs-toggle="collapse" data-bs-target="#saturday" aria-expanded="false">
+      <button class="btn btn-outline-light no-hover w-100 text-start mb-2" type="button" data-bs-toggle="collapse"
+        data-bs-target="#saturday" aria-expanded="false">
         Суббота
       </button>
       <div class="collapse" id="saturday">
@@ -284,8 +287,8 @@
 
     <!-- Воскресенье -->
     <div class="table-container">
-      <button class="btn btn-outline-light no-hover w-100 text-start mb-2" type="button" 
-              data-bs-toggle="collapse" data-bs-target="#sunday" aria-expanded="false">
+      <button class="btn btn-outline-light no-hover w-100 text-start mb-2" type="button" data-bs-toggle="collapse"
+        data-bs-target="#sunday" aria-expanded="false">
         Воскресенье
       </button>
       <div class="collapse" id="sunday">
@@ -328,7 +331,7 @@
       defaultDate: "today",
       locale: "ru",
       disableMobile: true,
-      onReady: function(selectedDates, dateStr, instance) {
+      onReady: function (selectedDates, dateStr, instance) {
         const yearSelect = instance.calendarContainer.querySelector(".numInputWrapper");
         if (yearSelect) {
           yearSelect.style.display = "none";
@@ -368,4 +371,5 @@
     });
   </script>
 </body>
+
 </html>
