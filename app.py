@@ -1,7 +1,5 @@
 from flask import Flask, render_template, redirect, url_for, request, flash
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
-from flask import Flask, render_template, redirect, url_for, request, flash
-from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from sqlalchemy.orm import sessionmaker
 from models import User, Role, Session as DBSession
 import os
@@ -164,36 +162,36 @@ def login():
 @app.route('/diary')
 @login_required
 def diary():
-    if current_user.role_id not in [3, 4]:
-        logout_user()
-        flash('Доступ запрещён.', 'danger')
-        return redirect(url_for('login'))
+    # if current_user.role_id not in [3, 4]:
+    #     logout_user()
+    #     flash('Доступ запрещён.', 'danger')
+    #     return redirect(url_for('login'))
 
-    if not template_exists('diary.html'):
-        return "Шаблон diary.html не найден", 500
+    # if not template_exists('diary.html'):
+    #     return "Шаблон diary.html не найден", 500
 
-    schedule = [
-        {
-            'start_time': '10:00',
-            'end_time': '11:00',
-            'subject': 'Фортепиано',
-            'homework': 'Практика этюда №5',
-            'file': 'etude5.pdf',
-            'grade': '5',
-            'teacher': 'Иванова А.Б.'
-        },
-        {
-            'start_time': '11:30',
-            'end_time': '12:30',
-            'subject': 'Сольфеджио',
-            'homework': 'Решить задания 1-3',
-            'file': 'solfeggio.pdf',
-            'grade': '4',
-            'teacher': 'Петров В.С.'
-        }
-    ]
+    # schedule = [
+    #     {
+    #         'start_time': '10:00',
+    #         'end_time': '11:00',
+    #         'subject': 'Фортепиано',
+    #         'homework': 'Практика этюда №5',
+    #         'file': 'etude5.pdf',
+    #         'grade': '5',
+    #         'teacher': 'Иванова А.Б.'
+    #     },
+    #     {
+    #         'start_time': '11:30',
+    #         'end_time': '12:30',
+    #         'subject': 'Сольфеджио',
+    #         'homework': 'Решить задания 1-3',
+    #         'file': 'solfeggio.pdf',
+    #         'grade': '4',
+    #         'teacher': 'Петров В.С.'
+    #     }
+    # ]
 
-    return render_template('diary.html', schedule=schedule, current_user=current_user)
+    return render_template('diary.html')
 
 # Выход
 
