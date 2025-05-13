@@ -1,5 +1,7 @@
 from flask import Flask, render_template, redirect, url_for, request, flash
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from flask import Flask, render_template, redirect, url_for, request, flash
+from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from sqlalchemy.orm import sessionmaker
 from models import User, Role, Session as DBSession
 import os
@@ -82,6 +84,9 @@ def index():
     logout_user()
     if not template_exists('index.html'):
         return "Шаблон index.html не найден", 500
+    logout_user()
+    if not template_exists('index.html'):
+        return "Шаблон index.html не найден", 500
     return render_template('index.html')
 
 # Страница входа
@@ -98,14 +103,20 @@ def login():
     if not template_exists('login.html'):
         return "Шаблон login.html не найден", 500
 
+    if current_user.is_authenticated:
+        if current_user.role_id in [3, 4]:
+            return redirect(url_for('diary'))
+        logout_user()
+        flash('Функционал для вашей роли пока не реализован.', 'warning')
+
+    if not template_exists('login.html'):
+        return "Шаблон login.html не найден", 500
+
     if request.method == 'POST':
-        username = request.form.get('username')
-        password = request.form.get('password')
+        username = request.form['username']
+        password = request.form['password']
 
-        if not username or not password:
-            print("Ошибка: логин или пароль не предоставлены")
-            return render_template('login.html', error="Введите логин и пароль")
-
+        # Проверка через SQLAlchemy
         db_session = DBSession()
         try:
             user = db_session.query(User).filter_by(login=username).first()
@@ -133,14 +144,18 @@ def login():
                     return redirect(url_for('login'))
             else:
                 print(f"Неверный логин или пароль: {username}")
+                print(f"Неверный логин или пароль: {username}")
                 return render_template('login.html', error="Неверный логин или пароль")
         except Exception as e:
+            db_session.rollback()
+            print(f"Ошибка в login: {e}")
             db_session.rollback()
             print(f"Ошибка в login: {e}")
             return render_template('login.html', error=f"Ошибка: {str(e)}")
         finally:
             db_session.close()
 
+    # Для GET-запроса рендерим форму логина
     return render_template('login.html')
 
 # Страница дневника
