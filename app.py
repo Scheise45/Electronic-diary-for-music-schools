@@ -1,10 +1,13 @@
-from flask import Flask, render_template, redirect, url_for, request, flash
+from flask import Flask, render_template, redirect, url_for, request, flash, session
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from sqlalchemy.orm import sessionmaker
-from models import User, Role, Session as DBSession
+from sqlalchemy.exc import OperationalError
+from models import User, Role, Student, StudentYear, Schedule, Homework, Grade, Subject, Teacher, Session as DBSession
+from models.base import engine
 import os
 import logging
 from datetime import datetime
+from jinja2 import TemplateNotFound
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -18,6 +21,7 @@ app.secret_key = os.getenv('FLASK_SECRET_KEY', 'a1b2c3d4e5f67890abcdef1234567890
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
+login_manager.session_protection = 'strong'
 
 # Проверка существования шаблона
 def template_exists(template_name):
@@ -25,8 +29,11 @@ def template_exists(template_name):
         app.jinja_env.get_template(template_name)
         logger.info(f"Шаблон {template_name} найден")
         return True
-    except Exception as e:
+    except TemplateNotFound as e:
         logger.error(f"Шаблон {template_name} не найден: {e}")
+        return False
+    except Exception as e:
+        logger.error(f"Ошибка при проверке шаблона {template_name}: {e}")
         return False
 
 # Класс пользователя для Flask-Login
@@ -49,19 +56,33 @@ def load_user(user_id):
         user = db_session.query(User).filter_by(id=user_id).first()
         if user:
             role = db_session.query(Role).filter_by(id=user.role_id).first()
-            return LoginUser(
+            login_user_obj = LoginUser(
                 id=user.id,
                 login=user.login,
                 role_id=user.role_id,
                 full_name=user.full_name,
                 role_name=role.name if role else 'Неизвестно'
             )
+            logger.info(f"Пользователь {user_id} загружен: login={user.login}, role_id={user.role_id}")
+            return login_user_obj
+        logger.warning(f"Пользователь {user_id} не найден")
         return None
     except Exception as e:
         logger.error(f"Ошибка загрузки пользователя {user_id}: {e}")
         return None
     finally:
         db_session.close()
+
+# Проверка подключения к базе
+def check_db_connection():
+    try:
+        with engine.connect() as connection:
+            connection.execute("SELECT 1")
+        logger.info("Подключение к базе данных успешно")
+        return True
+    except OperationalError as e:
+        logger.error(f"Ошибка подключения к базе данных: {e}")
+        return False
 
 # Главная страница
 @app.route('/')
@@ -70,24 +91,36 @@ def index():
     if not template_exists('index.html'):
         logger.error("Шаблон index.html отсутствует")
         return "Шаблон index.html не найден", 500
+    logger.info("Рендеринг index.html")
     return render_template('index.html')
 
 # Страница входа
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
+        logger.info(f"Пользователь уже авторизован: {current_user.login}, role_id={current_user.role_id}")
         if current_user.role_id in [3, 4]:
+            logger.info("Перенаправление авторизованного пользователя на /diary")
             return redirect(url_for('diary'))
+        logger.warning(f"Роль {current_user.role_id} не поддерживается, разлогин")
         logout_user()
         flash('Функционал для вашей роли пока не реализован.', 'warning')
+        return redirect(url_for('login'))
 
     if not template_exists('login.html'):
         logger.error("Шаблон login.html отсутствует")
         return "Шаблон login.html не найден", 500
 
+    # Проверка подключения к базе
+    if not check_db_connection():
+        flash('Ошибка подключения к базе данных. Попробуйте позже.', 'danger')
+        logger.error("Рендеринг login.html из-за ошибки базы")
+        return render_template('login.html')
+
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
+        logger.info(f"Попытка входа: username={username}")
 
         if not username or not password:
             logger.warning("Попытка входа без логина или пароля")
@@ -97,37 +130,50 @@ def login():
         db_session = DBSession()
         try:
             user = db_session.query(User).filter_by(login=username).first()
-            if user and user.password == password:  # Проверка без хеширования
-                role = db_session.query(Role).filter_by(id=user.role_id).first()
-                login_user(LoginUser(
-                    id=user.id,
-                    login=user.login,
-                    role_id=user.role_id,
-                    full_name=user.full_name,
-                    role_name=role.name if role else 'Неизвестно'
-                ))
-                logger.info(f"Успешная авторизация: {username}, role_id: {user.role_id}")
-                if user.role_id in [3, 4]:
-                    return redirect(url_for('diary'))
-                logout_user()
-                flash('Функционал для вашей роли пока не реализован.', 'warning')
-                return redirect(url_for('login'))
+            if user:
+                logger.info(f"Пользователь найден: id={user.id}, role_id={user.role_id}")
+                if user.password == password:  # Проверка без хеширования
+                    role = db_session.query(Role).filter_by(id=user.role_id).first()
+                    login_user_obj = LoginUser(
+                        id=user.id,
+                        login=user.login,
+                        role_id=user.role_id,
+                        full_name=user.full_name,
+                        role_name=role.name if role else 'Неизвестно'
+                    )
+                    login_user(login_user_obj, remember=True)
+                    logger.info(f"Успешная авторизация: {username}, role_id={user.role_id}, session={session.sid}")
+                    db_session.commit()
+                    if user.role_id in [3, 4]:
+                        logger.info("Перенаправление на /diary")
+                        return redirect(url_for('diary'))
+                    logger.warning(f"Роль {user.role_id} не поддерживается, разлогин")
+                    logout_user()
+                    flash('Функционал для вашей роли пока не реализован.', 'warning')
+                    return redirect(url_for('login'))
+                else:
+                    logger.warning(f"Неверный пароль для {username}")
+                    flash('Неверный логин или пароль.', 'danger')
             else:
-                logger.warning(f"Неверный логин или пароль: {username}")
+                logger.warning(f"Пользователь {username} не найден")
                 flash('Неверный логин или пароль.', 'danger')
+        except OperationalError as e:
+            logger.error(f"Ошибка базы данных при авторизации {username}: {e}")
+            flash('Ошибка подключения к базе данных. Попробуйте снова.', 'danger')
         except Exception as e:
-            logger.error(f"Ошибка авторизации: {e}")
+            logger.error(f"Неизвестная ошибка при авторизации {username}: {e}")
             flash('Произошла ошибка. Попробуйте снова.', 'danger')
         finally:
             db_session.close()
 
+    logger.info("Рендеринг login.html")
     return render_template('login.html')
 
 # Страница дневника
 @app.route('/diary')
 @login_required
 def diary():
-    logger.info(f"Попытка открыть /diary для пользователя {current_user.login}, role_id: {current_user.role_id}")
+    logger.info(f"Попытка открыть /diary для пользователя {current_user.login}, role_id={current_user.role_id}")
     if current_user.role_id not in [3, 4]:
         logger.warning(f"Доступ запрещён для role_id: {current_user.role_id}")
         logout_user()
@@ -138,91 +184,136 @@ def diary():
         logger.error("Шаблон diary.html отсутствует")
         return "Шаблон diary.html не найден", 500
 
+    # Проверка подключения к базе
+    if not check_db_connection():
+        flash('Ошибка подключения к базе данных. Попробуйте позже.', 'danger')
+        logger.error("Перенаправление на /index из-за ошибки базы")
+        return redirect(url_for('index'))
+
     # Обработка параметра даты
     selected_date = request.args.get('date')
     try:
         if selected_date:
-            datetime.strptime(selected_date, '%Y-%m-%d')
+            selected_date = datetime.strptime(selected_date, '%Y-%m-%d').date()
         else:
-            selected_date = datetime.now().strftime('%Y-%m-%d')
+            selected_date = datetime.now().date()
     except ValueError:
         logger.warning(f"Неверный формат даты: {selected_date}")
         flash('Неверный формат даты.', 'danger')
-        selected_date = datetime.now().strftime('%Y-%m-%d')
+        selected_date = datetime.now().date()
 
-    # Пример расписания (заменить на запрос к базе)
-    monday_schedule = [
-        {
-            'subject': 'Фортепиано',
-            'homework': 'Практика этюда №5',
-            'file': 'etude5.pdf',
-            'grade': '5',
-            'teacher': 'Иванова А.Б.'
-        }
-    ] if '2025-05-12' in selected_date else []
-    tuesday_schedule = [
-        {
-            'subject': 'Сольфеджио',
-            'homework': 'Решить задания 1-3',
-            'file': 'solfeggio.pdf',
-            'grade': '4',
-            'teacher': 'Петров В.С.'
-        }
-    ] if '2025-05-13' in selected_date else []
-    wednesday_schedule = [
-        {
-            'subject': 'Вокал',
-            'homework': 'Разучить песню',
-            'file': 'song.pdf',
-            'grade': '5',
-            'teacher': 'Сидорова Е.В.'
-        }
-    ] if '2025-05-14' in selected_date else []
-    thursday_schedule = [
-        {
-            'subject': 'Скрипка',
-            'homework': 'Практика гамм',
-            'file': 'scales.pdf',
-            'grade': '4',
-            'teacher': 'Козлов Д.А.'
-        }
-    ] if '2025-05-15' in selected_date else []
-    friday_schedule = [
-        {
-            'subject': 'Теория музыки',
-            'homework': 'Прочитать главу 3',
-            'file': 'theory.pdf',
-            'grade': '5',
-            'teacher': 'Михайлова О.П.'
-        }
-    ] if '2025-05-16' in selected_date else []
-    saturday_schedule = [
-        {
-            'subject': 'Ансамбль',
-            'homework': 'Подготовить партию',
-            'file': 'ensemble.pdf',
-            'grade': '4',
-            'teacher': 'Лебедев С.Н.'
-        }
-    ] if '2025-05-17' in selected_date else []
-    sunday_schedule = []  # Воскресенье без уроков
+    db_session = DBSession()
+    try:
+        # Находим student_id и student_year для текущего пользователя
+        student = db_session.query(Student).filter_by(user_id=current_user.id).first()
+        if not student:
+            logger.warning(f"Пользователь {current_user.login} не является студентом")
+            flash('Расписание недоступно: пользователь не зарегистрирован как студент.', 'danger')
+            return redirect(url_for('index'))
 
-    logger.info(f"Рендеринг diary.html для даты {selected_date}")
-    return render_template(
-        'diary.html',
-        monday_schedule=monday_schedule,
-        tuesday_schedule=tuesday_schedule,
-        wednesday_schedule=wednesday_schedule,
-        thursday_schedule=thursday_schedule,
-        friday_schedule=friday_schedule,
-        saturday_schedule=saturday_schedule,
-        sunday_schedule=sunday_schedule,
-        current_user=current_user
-    )
+        # Находим текущий учебный год (предполагаем последний по ID)
+        current_year = db_session.query(SchoolYear).order_by(SchoolYear.id.desc()).first()
+        if not current_year:
+            logger.error("Текущий учебный год не найден")
+            flash('Расписание недоступно: учебный год не задан.', 'danger')
+            return redirect(url_for('index'))
+
+        student_year = db_session.query(StudentYear).filter_by(
+            student_id=student.id,
+            school_year_id=current_year.id
+        ).first()
+        if not student_year:
+            logger.warning(f"Для студента {student.id} не найден учебный год")
+            flash('Расписание недоступно: данные об учебном годе отсутствуют.', 'danger')
+            return redirect(url_for('index'))
+
+        # Инициализация расписания для всех дней
+        schedules = {
+            1: [],  # Понедельник
+            2: [],  # Вторник
+            3: [],  # Среда
+            4: [],  # Четверг
+            5: [],  # Пятница
+            6: [],  # Суббота
+            7: []   # Воскресенье
+        }
+
+        # Запрос расписания из таблицы schedule
+        schedule_items = db_session.query(Schedule, Subject, User).join(
+            Subject, Schedule.subject_id == Subject.id
+        ).join(
+            Teacher, Schedule.teacher_id == Teacher.id
+        ).join(
+            User, Teacher.user_id == User.id
+        ).filter(
+            Schedule.school_year_id == current_year.id,
+            Schedule.class_group == student_year.class_group,
+            Schedule.class_letter == student_year.class_letter
+        ).all()
+
+        for schedule, subject, teacher_user in schedule_items:
+            day = schedule.day_of_week
+            if day not in schedules:
+                continue
+
+            # Находим домашнее задание
+            homework = db_session.query(Homework).filter(
+                Homework.school_year_id == current_year.id,
+                Homework.date == selected_date,
+                Homework.class_group == student_year.class_group,
+                Homework.class_letter == student_year.class_letter,
+                Homework.subject_id == schedule.subject_id
+            ).first()
+
+            # Находим оценку
+            grade = db_session.query(Grade).filter(
+                Grade.student_year_id == student_year.id,
+                Grade.date == selected_date,
+                Grade.subject_id == schedule.subject_id,
+                Grade.lesson_number == schedule.lesson_number
+            ).first()
+
+            schedules[day].append({
+                'subject': subject.name,
+                'homework': homework.text if homework else 'Нет задания',
+                'file': 'no_file.pdf',  # Заглушка, пока нет поля для файла
+                'grade': grade.grade if grade else '-',
+                'teacher': teacher_user.full_name
+            })
+
+        # Формируем расписание для шаблона
+        monday_schedule = schedules[1]
+        tuesday_schedule = schedules[2]
+        wednesday_schedule = schedules[3]
+        thursday_schedule = schedules[4]
+        friday_schedule = schedules[5]
+        saturday_schedule = schedules[6]
+        sunday_schedule = schedules[7]
+
+        logger.info(f"Рендеринг diary.html для даты {selected_date}, пользователь: {current_user.login}")
+        return render_template(
+            'diary.html',
+            monday_schedule=monday_schedule,
+            tuesday_schedule=tuesday_schedule,
+            wednesday_schedule=wednesday_schedule,
+            thursday_schedule=thursday_schedule,
+            friday_schedule=friday_schedule,
+            saturday_schedule=saturday_schedule,
+            sunday_schedule=sunday_schedule,
+            current_user=current_user
+        )
+
+    except Exception as e:
+        logger.error(f"Ошибка при загрузке расписания: {e}")
+        flash('Произошла ошибка при загрузке расписания.', 'danger')
+        return redirect(url_for('index'))
+    finally:
+        db_session.close()
 
 # Выход
 @app.route('/logout')
 def logout():
+    logger.info(f"Выход пользователя: {current_user.login if current_user.is_authenticated else 'Неизвестный'}")
     logout_user()
     flash('Вы вышли из системы.', 'info')
     return redirect(url_for('index'))
@@ -239,4 +330,4 @@ def not_found(error):
     return "Страница не найдена", 404
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True)
