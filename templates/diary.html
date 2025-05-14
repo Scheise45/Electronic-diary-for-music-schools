@@ -69,258 +69,258 @@
 	<div class="container my-4">
 		<h2 class="mb-4">Расписание</h2>
 
-		<!-- Понедельник -->
-		<div class="table-container">
-			<button class="btn btn-outline-light no-hover w-100 text-start mb-2" type="button" data-bs-toggle="collapse"
-			data-bs-target="#monday" aria-expanded="true">
-			Понедельник <span class="date-label" data-day="0"></span>
-		</button>
-		<div class="collapse show" id="monday">
-			<table class="table table-bordered table-hover theme-table">
-				<thead class="table-secondary">
-					<tr>
-						<th>Предмет</th>
-						<th>Домашнее задание</th>
-						<th>Файл</th>
-						<th>Оценка</th>
-						<th>Преподаватель</th>
-					</tr>
-				</thead>
-				<tbody>
-					{% for lesson in monday_schedule %}
-					<tr>
-						<td>{{ lesson.subject }}</td>
-						<td>{{ lesson.homework }}</td>
-						<td><a href="{{ lesson.file }}">{{ lesson.file }}</a></td>
-						<td>{{ lesson.grade }}</td>
-						<td>{{ lesson.teacher }}</td>
-					</tr>
-					{% else %}
-					<tr>
-						<td colspan="5" class="text-center">Нет уроков</td>
-					</tr>
-					{% endfor %}
-				</tbody>
-			</table>
-		</div>
-	</div>
+    <!-- Понедельник -->
+    <div class="table-container">
+      <button class="btn btn-outline-light no-hover w-100 text-start mb-2" type="button"
+              data-bs-toggle="collapse" data-bs-target="#monday" aria-expanded="true">
+        Понедельник
+      </button>
+      <div class="collapse show" id="monday">
+        <table class="table table-bordered table-hover theme-table">
+          <thead class="table-secondary">
+            <tr>
+              <th>Предмет</th>
+              <th>Домашнее задание</th>
+              <th>Файл</th>
+              <th>Оценка</th>
+              <th>Преподаватель</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for lesson in monday_schedule %}
+            <tr>
+              <td>{{ lesson.subject }}</td>
+              <td>{{ lesson.homework }}</td>
+              <td><a href="{{ lesson.file }}">{{ lesson.file }}</a></td>
+              <td>{{ lesson.grade }}</td>
+              <td>{{ lesson.teacher }}</td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="5" class="text-center">Нет уроков</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
 
-	<!-- Вторник -->
-	<div class="table-container">
-		<button class="btn btn-outline-light no-hover w-100 text-start mb-2" type="button" data-bs-toggle="collapse"
-		data-bs-target="#tuesday" aria-expanded="false">
-		Вторник <span class="date-label" data-day="1"></span>
-	</button>
-	<div class="collapse" id="tuesday">
-		<table class="table table-bordered table-hover theme-table">
-			<thead class="table-secondary">
-				<tr>
-					<th>Предмет</th>
-					<th>Домашнее задание</th>
-					<th>Файл</th>
-					<th>Оценка</th>
-					<th>Преподаватель</th>
-				</tr>
-			</thead>
-			<tbody>
-				{% for lesson in tuesday_schedule %}
-				<tr>
-					<td>{{ lesson.subject }}</td>
-					<td>{{ lesson.homework }}</td>
-					<td><a href="{{ lesson.file }}">{{ lesson.file }}</a></td>
-					<td>{{ lesson.grade }}</td>
-					<td>{{ lesson.teacher }}</td>
-				</tr>
-				{% else %}
-				<tr>
-					<td colspan="5" class="text-center">Нет уроков</td>
-				</tr>
-				{% endfor %}
-			</tbody>
-		</table>
-	</div>
-</div>
+    <!-- Вторник -->
+    <div class="table-container">
+      <button class="btn btn-outline-light no-hover w-100 text-start mb-2" type="button"
+              data-bs-toggle="collapse" data-bs-target="#tuesday" aria-expanded="false">
+        Вторник
+      </button>
+      <div class="collapse" id="tuesday">
+        <table class="table table-bordered table-hover theme-table">
+          <thead class="table-secondary">
+            <tr>
+              <th>Предмет</th>
+              <th>Домашнее задание</th>
+              <th>Файл</th>
+              <th>Оценка</th>
+              <th>Преподаватель</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for lesson in tuesday_schedule %}
+            <tr>
+              <td>{{ lesson.subject }}</td>
+              <td>{{ lesson.homework }}</td>
+              <td><a href="{{ lesson.file }}">{{ lesson.file }}</a></td>
+              <td>{{ lesson.grade }}</td>
+              <td>{{ lesson.teacher }}</td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="5" class="text-center">Нет уроков</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
 
-<!-- Среда -->
-<div class="table-container">
-	<button class="btn btn-outline-light no-hover w-100 text-start mb-2" type="button" data-bs-toggle="collapse"
-	data-bs-target="#wednesday" aria-expanded="false">
-	Среда <span class="date-label" data-day="2"></span>
-</button>
-<div class="collapse" id="wednesday">
-	<table class="table table-bordered table-hover theme-table">
-		<thead class="table-secondary">
-			<tr>
-				<th>Предмет</th>
-				<th>Домашнее задание</th>
-				<th>Файл</th>
-				<th>Оценка</th>
-				<th>Преподаватель</th>
-			</tr>
-		</thead>
-		<tbody>
-			{% for lesson in wednesday_schedule %}
-			<tr>
-				<td>{{ lesson.subject }}</td>
-				<td>{{ lesson.homework }}</td>
-				<td><a href="{{ lesson.file }}">{{ lesson.file }}</a></td>
-				<td>{{ lesson.grade }}</td>
-				<td>{{ lesson.teacher }}</td>
-			</tr>
-			{% else %}
-			<tr>
-				<td colspan="5" class="text-center">Нет уроков</td>
-			</tr>
-			{% endfor %}
-		</tbody>
-	</table>
-</div>
-</div>
+    <!-- Среда -->
+    <div class="table-container">
+      <button class="btn btn-outline-light no-hover w-100 text-start mb-2" type="button"
+              data-bs-toggle="collapse" data-bs-target="#wednesday" aria-expanded="false">
+        Среда
+      </button>
+      <div class="collapse" id="wednesday">
+        <table class="table table-bordered table-hover theme-table">
+          <thead class="table-secondary">
+            <tr>
+              <th>Предмет</th>
+              <th>Домашнее задание</th>
+              <th>Файл</th>
+              <th>Оценка</th>
+              <th>Преподаватель</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for lesson in wednesday_schedule %}
+            <tr>
+              <td>{{ lesson.subject }}</td>
+              <td>{{ lesson.homework }}</td>
+              <td><a href="{{ lesson.file }}">{{ lesson.file }}</a></td>
+              <td>{{ lesson.grade }}</td>
+              <td>{{ lesson.teacher }}</td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="5" class="text-center">Нет уроков</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
 
-<!-- Четверг -->
-<div class="table-container">
-	<button class="btn btn-outline-light no-hover w-100 text-start mb-2" type="button" data-bs-toggle="collapse"
-	data-bs-target="#thursday" aria-expanded="false">
-	Четверг <span class="date-label" data-day="3"></span>
-</button>
-<div class="collapse" id="thursday">
-	<table class="table table-bordered table-hover theme-table">
-		<thead class="table-secondary">
-			<tr>
-				<th>Предмет</th>
-				<th>Домашнее задание</th>
-				<th>Файл</th>
-				<th>Оценка</th>
-				<th>Преподаватель</th>
-			</tr>
-		</thead>
-		<tbody>
-			{% for lesson in thursday_schedule %}
-			<tr>
-				<td>{{ lesson.subject }}</td>
-				<td>{{ lesson.homework }}</td>
-				<td><a href="{{ lesson.file }}">{{ lesson.file }}</a></td>
-				<td>{{ lesson.grade }}</td>
-				<td>{{ lesson.teacher }}</td>
-			</tr>
-			{% else %}
-			<tr>
-				<td colspan="5" class="text-center">Нет уроков</td>
-			</tr>
-			{% endfor %}
-		</tbody>
-	</table>
-</div>
-</div>
+    <!-- Четверг -->
+    <div class="table-container">
+      <button class="btn btn-outline-light no-hover w-100 text-start mb-2" type="button"
+              data-bs-toggle="collapse" data-bs-target="#thursday" aria-expanded="false">
+        Четверг
+      </button>
+      <div class="collapse" id="thursday">
+        <table class="table table-bordered table-hover theme-table">
+          <thead class="table-secondary">
+            <tr>
+              <th>Предмет</th>
+              <th>Домашнее задание</th>
+              <th>Файл</th>
+              <th>Оценка</th>
+              <th>Преподаватель</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for lesson in thursday_schedule %}
+            <tr>
+              <td>{{ lesson.subject }}</td>
+              <td>{{ lesson.homework }}</td>
+              <td><a href="{{ lesson.file }}">{{ lesson.file }}</a></td>
+              <td>{{ lesson.grade }}</td>
+              <td>{{ lesson.teacher }}</td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="5" class="text-center">Нет уроков</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
 
-<!-- Пятница -->
-<div class="table-container">
-	<button class="btn btn-outline-light no-hover w-100 text-start mb-2" type="button" data-bs-toggle="collapse"
-	data-bs-target="#friday" aria-expanded="false">
-	Пятница <span class="date-label" data-day="4"></span>
-</button>
-<div class="collapse" id="friday">
-	<table class="table table-bordered table-hover theme-table">
-		<thead class="table-secondary">
-			<tr>
-				<th>Предмет</th>
-				<th>Домашнее задание</th>
-				<th>Файл</th>
-				<th>Оценка</th>
-				<th>Преподаватель</th>
-			</tr>
-		</thead>
-		<tbody>
-			{% for lesson in friday_schedule %}
-			<tr>
-				<td>{{ lesson.subject }}</td>
-				<td>{{ lesson.homework }}</td>
-				<td><a href="{{ lesson.file }}">{{ lesson.file }}</a></td>
-				<td>{{ lesson.grade }}</td>
-				<td>{{ lesson.teacher }}</td>
-			</tr>
-			{% else %}
-			<tr>
-				<td colspan="5" class="text-center">Нет уроков</td>
-			</tr>
-			{% endfor %}
-		</tbody>
-	</table>
-</div>
-</div>
+    <!-- Пятница -->
+    <div class="table-container">
+      <button class="btn btn-outline-light no-hover w-100 text-start mb-2" type="button"
+              data-bs-toggle="collapse" data-bs-target="#friday" aria-expanded="false">
+        Пятница
+      </button>
+      <div class="collapse" id="friday">
+        <table class="table table-bordered table-hover theme-table">
+          <thead class="table-secondary">
+            <tr>
+              <th>Предмет</th>
+              <th>Домашнее задание</th>
+              <th>Файл</th>
+              <th>Оценка</th>
+              <th>Преподаватель</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for lesson in friday_schedule %}
+            <tr>
+              <td>{{ lesson.subject }}</td>
+              <td>{{ lesson.homework }}</td>
+              <td><a href="{{ lesson.file }}">{{ lesson.file }}</a></td>
+              <td>{{ lesson.grade }}</td>
+              <td>{{ lesson.teacher }}</td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="5" class="text-center">Нет уроков</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
 
-<!-- Суббота -->
-<div class="table-container">
-	<button class="btn btn-outline-light no-hover w-100 text-start mb-2" type="button" data-bs-toggle="collapse"
-	data-bs-target="#saturday" aria-expanded="false">
-	Суббота <span class="date-label" data-day="5"></span>
-</button>
-<div class="collapse" id="saturday">
-	<table class="table table-bordered table-hover theme-table">
-		<thead class="table-secondary">
-			<tr>
-				<th>Предмет</th>
-				<th>Домашнее задание</th>
-				<th>Файл</th>
-				<th>Оценка</th>
-				<th>Преподаватель</th>
-			</tr>
-		</thead>
-		<tbody>
-			{% for lesson in saturday_schedule %}
-			<tr>
-				<td>{{ lesson.subject }}</td>
-				<td>{{ lesson.homework }}</td>
-				<td><a href="{{ lesson.file }}">{{ lesson.file }}</a></td>
-				<td>{{ lesson.grade }}</td>
-				<td>{{ lesson.teacher }}</td>
-			</tr>
-			{% else %}
-			<tr>
-				<td colspan="5" class="text-center">Нет уроков</td>
-			</tr>
-			{% endfor %}
-		</tbody>
-	</table>
-</div>
-</div>
+    <!-- Суббота -->
+    <div class="table-container">
+      <button class="btn btn-outline-light no-hover w-100 text-start mb-2" type="button"
+              data-bs-toggle="collapse" data-bs-target="#saturday" aria-expanded="false">
+        Суббота
+      </button>
+      <div class="collapse" id="saturday">
+        <table class="table table-bordered table-hover theme-table">
+          <thead class="table-secondary">
+            <tr>
+              <th>Предмет</th>
+              <th>Домашнее задание</th>
+              <th>Файл</th>
+              <th>Оценка</th>
+              <th>Преподаватель</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for lesson in saturday_schedule %}
+            <tr>
+              <td>{{ lesson.subject }}</td>
+              <td>{{ lesson.homework }}</td>
+              <td><a href="{{ lesson.file }}">{{ lesson.file }}</a></td>
+              <td>{{ lesson.grade }}</td>
+              <td>{{ lesson.teacher }}</td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="5" class="text-center">Нет уроков</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
 
-<!-- Воскресенье -->
-<div class="table-container">
-	<button class="btn btn-outline-light no-hover w-100 text-start mb-2" type="button" data-bs-toggle="collapse"
-	data-bs-target="#sunday" aria-expanded="false">
-	Воскресенье <span class="date-label" data-day="6"></span>
-</button>
-<div class="collapse" id="sunday">
-	<table class="table table-bordered table-hover theme-table">
-		<thead class="table-secondary">
-			<tr>
-				<th>Предмет</th>
-				<th>Домашнее задание</th>
-				<th>Файл</th>
-				<th>Оценка</th>
-				<th>Преподаватель</th>
-			</tr>
-		</thead>
-		<tbody>
-			{% for lesson in sunday_schedule %}
-			<tr>
-				<td>{{ lesson.subject }}</td>
-				<td>{{ lesson.homework }}</td>
-				<td><a href="{{ lesson.file }}">{{ lesson.file }}</a></td>
-				<td>{{ lesson.grade }}</td>
-				<td>{{ lesson.teacher }}</td>
-			</tr>
-			{% else %}
-			<tr>
-				<td colspan="5" class="text-center">Нет уроков</td>
-			</tr>
-			{% endfor %}
-		</tbody>
-	</table>
-</div>
-</div>
-</div>
+    <!-- Воскресенье -->
+    <div class="table-container">
+      <button class="btn btn-outline-light no-hover w-100 text-start mb-2" type="button"
+              data-bs-toggle="collapse" data-bs-target="#sunday" aria-expanded="false">
+        Воскресенье
+      </button>
+      <div class="collapse" id="sunday">
+        <table class="table table-bordered table-hover theme-table">
+          <thead class="table-secondary">
+            <tr>
+              <th>Предмет</th>
+              <th>Домашнее задание</th>
+              <th>Файл</th>
+              <th>Оценка</th>
+              <th>Преподаватель</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for lesson in sunday_schedule %}
+            <tr>
+              <td>{{ lesson.subject }}</td>
+              <td>{{ lesson.homework }}</td>
+              <td><a href="{{ lesson.file }}">{{ lesson.file }}</a></td>
+              <td>{{ lesson.grade }}</td>
+              <td>{{ lesson.teacher }}</td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="5" class="text-center">Нет уроков</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 
 <!-- Скрипты -->
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>

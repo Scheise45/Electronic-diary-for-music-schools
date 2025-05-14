@@ -2,7 +2,8 @@
 <html lang="ru" data-bs-theme="dark">
 <head>
   <meta charset="UTF-8">
-  <title>Кабинет ученика | Музыкальная школа</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Управление пользователями | Музыкальная школа</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <style>
@@ -11,179 +12,237 @@
       background-color: inherit;
       border-color: inherit;
     }
+    .collapse-row td {
+      background-color: rgba(255, 255, 255, 0.05);
+    }
   </style>
 </head>
 <body>
+  <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="/">Электронный дневник</a>
+      <div class="d-flex align-items-center gap-2 ms-auto">
+        {% if current_user.is_authenticated %}
+        <span class="navbar-text me-2">
+          {{ current_user.full_name }} ({{ current_user.role_name }})
+        </span>
+        <a href="{{ url_for('logout') }}" class="btn btn-outline-light">Выйти</a>
+        {% endif %}
+        <button class="btn btn-outline-light" id="toggle-theme">🌙</button>
+      </div>
+    </div>
+  </nav>
 
-<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-  <div class="container-fluid">
-    <div class="dropdown">
-      <button class="navbar-brand btn btn-link text-white dropdown-toggle no-hover" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-        Электронный дневник
-      </button>
-      <ul class="dropdown-menu">
-        <li><a class="dropdown-item" href="/student/homework">📊 Статистика успеваемости</a></li>
-        <li><a class="dropdown-item" href="/student/homework">🎼 Управление предметами</a></li>
-        <li><a class="dropdown-item" href="/student/homework">📅 Управление расписанием</a></li>
-      </ul>
+  <div class="container my-4">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2>Управление пользователями</h2>
+      <a href="{{ url_for('admin') }}" class="btn btn-outline-light">Назад</a>
     </div>
 
-    <div class="d-flex align-items-center gap-2 ms-auto">
-      <div class="dropdown">
-        <button class="btn btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
-          {{ current_user.role|capitalize }}
-        </button>
-        <ul class="dropdown-menu dropdown-menu-end">
-          <li><a class="dropdown-item" href="#">Ученик</a></li>
-          <li><a class="dropdown-item" href="#">Учитель</a></li>
-          <li><a class="dropdown-item" href="#">Администратор</a></li>
-        </ul>
+    <!-- Форма поиска -->
+    <form class="row g-3 mb-4" method="POST" action="{{ url_for('admin_users') }}">
+      <div class="col-md-10">
+        <input type="text" class="form-control" name="search" placeholder="Поиск по имени или фамилии" value="{{ search_query|default('') }}">
       </div>
-
-      <div class="dropdown">
-        <button class="btn btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
-          {{ current_user.name }}
-        </button>
-        <ul class="dropdown-menu dropdown-menu-end">
-          <li><a class="dropdown-item" href="/logout">Сменить пользователя</a></li>
-        </ul>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-primary w-100">Поиск</button>
       </div>
+    </form>
 
-      <button class="btn btn-outline-light" id="toggle-theme">🌙</button>
-    </div>
+    <!-- Форма добавления -->
+    <form class="row g-3 mb-4" method="POST" action="{{ url_for('admin_users_add') }}">
+      <div class="col-md-3">
+        <input type="text" class="form-control" name="full_name" placeholder="Фамилия Имя Отчество" required>
+      </div>
+      <div class="col-md-2">
+        <input type="number" class="form-control" name="enrollment_year" placeholder="Год зачисления" min="2000" max="2030" required>
+      </div>
+      <div class="col-md-2">
+        <input type="email" class="form-control" name="email" placeholder="Email" required>
+      </div>
+      <div class="col-md-2">
+        <input type="tel" class="form-control" name="phone" placeholder="+7XXXXXXXXXX" pattern="\+7[0-9]{10}" required>
+      </div>
+      <div class="col-md-2">
+        <select class="form-select" name="role_id" required>
+          <option value="">Выберите роль</option>
+          <option value="1">Администратор</option>
+          <option value="2">Учитель</option>
+          <option value="3">Родитель</option>
+          <option value="4">Ученик</option>
+        </select>
+      </div>
+      <div class="col-md-1">
+        <button type="submit" class="btn btn-success w-100">Добавить</button>
+      </div>
+    </form>
+
+    <!-- Таблица пользователей -->
+    <table class="table table-striped table-bordered theme-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Имя</th>
+          <th>Роль</th>
+          <th>Email</th>
+          <th>Телефон</th>
+          <th>Действия</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for user in users %}
+        <tr>
+          <td class="cell-id">{{ user.id }}</td>
+          <td class="cell-name">{{ user.full_name }}</td>
+          <td class="cell-role">
+            {% if user.role_id == 1 %}Администратор
+            {% elif user.role_id == 2 %}Учитель
+            {% elif user.role_id == 3 %}Родитель
+            {% elif user.role_id == 4 %}Ученик
+            {% else %}Неизвестно{% endif %}
+          </td>
+          <td class="cell-email">{{ user.email }}</td>
+          <td class="cell-phone">{{ user.phone or '-' }}</td>
+          <td>
+            <button class="btn btn-sm btn-warning btn-toggle-edit" data-user-id="{{ user.id }}">Редактировать</button>
+            <button class="btn btn-sm btn-info btn-toggle-details" data-bs-toggle="collapse" data-bs-target="#details-{{ user.id }}" aria-expanded="false" aria-controls="details-{{ user.id }}">Подробнее</button>
+          </td>
+        </tr>
+        <!-- Скрытая строка с подробной информацией -->
+        <tr class="collapse collapse-row" id="details-{{ user.id }}">
+          <td colspan="6">
+            <div class="p-3">
+              <p><strong>Логин:</strong> {{ user.login }}</p>
+              <p><strong>Пароль:</strong> {{ user.password }}</p>
+              <p><strong>Телефон:</strong> {{ user.phone or '-' }}</p>
+              <p><strong>Роль:</strong> 
+                {% if user.role_id == 1 %}Администратор
+                {% elif user.role_id == 2 %}Учитель
+                {% elif user.role_id == 3 %}Родитель
+                {% elif user.role_id == 4 %}Ученик
+                {% else %}Неизвестно{% endif %}
+              </p>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
-</nav>
 
-<div class="container my-4">
-  <h2 class="mb-4">Управление пользователями</h2>
-
-  <form class="row g-3 mb-4" method="POST" action="/admin/users/add">
-    <div class="col-md-4">
-      <input type="text" class="form-control" name="name" placeholder="Имя пользователя" required>
-    </div>
-    <div class="col-md-3">
-      <input type="email" class="form-control" name="email" placeholder="Email" required>
-    </div>
-    <div class="col-md-3">
-      <select class="form-select" name="role" required>
-        <option value="">Роль</option>
-        <option value="student">Ученик</option>
-        <option value="teacher">Преподаватель</option>
-        <option value="admin">Администратор</option>
-      </select>
-    </div>
-    <div class="col-md-2">
-      <button type="submit" class="btn btn-success w-100">Добавить</button>
-    </div>
-  </form>
-
-  <table class="table table-striped table-bordered theme-table">
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>Имя</th>
-        <th>Роль</th>
-        <th>Email</th>
-        <th>Действия</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td class="cell-id">1</td>
-        <td class="cell-name">Иванов И.И.</td>
-        <td class="cell-role">Преподаватель</td>
-        <td class="cell-email">ivanov@example.com</td>
-        <td>
-          <button class="btn btn-sm btn-warning btn-toggle-edit">Редактировать</button>
-          <a href="/admin/users/delete/1" class="btn btn-sm btn-danger">Удалить</a>
-        </td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-<script>
-  const toggleBtn = document.getElementById('toggle-theme');
-  toggleBtn.addEventListener('click', () => {
-    const html = document.documentElement;
-    const currentTheme = html.getAttribute('data-bs-theme');
-    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-    html.setAttribute('data-bs-theme', newTheme);
-    toggleBtn.textContent = newTheme === 'dark' ? '🌙' : '☀️';
-
-    // Переключение таблиц
-    document.querySelectorAll('.theme-table').forEach(table => {
-      table.classList.remove('table-dark', 'table-light');
-      table.classList.add(newTheme === 'dark' ? 'table-dark' : 'table-light');
-    });
-
-    // Переключение кнопок дней недели
-    document.querySelectorAll('.theme-table').forEach(table => {
-      table.classList.remove('table-dark', 'table-light');
-      table.classList.add(newTheme === 'dark' ? 'table-dark' : 'table-light');
-    });
-
-  // Инициализация по текущей теме
-  document.addEventListener('DOMContentLoaded', () => {
-    const theme = document.documentElement.getAttribute('data-bs-theme');
-
-    document.querySelectorAll('.theme-table').forEach(table => {
-      table.classList.add(theme === 'dark' ? 'table-dark' : 'table-light');
-    });
-  });
-
-    document.querySelectorAll('.theme-table').forEach(table => {
-      table.classList.add(theme === 'dark' ? 'table-dark' : 'table-light');
-    });
-
-    document.querySelectorAll('.theme-button').forEach(btn => {
-      btn.classList.add(theme === 'dark' ? 'btn-outline-light' : 'btn-outline-dark');
-    });
-  });
-</script>
-<script>
-  document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('.btn-toggle-edit').forEach(button => {
-      button.addEventListener('click', function () {
-        const row = this.closest('tr');
-        const isEditing = row.classList.toggle('editing');
-
-        if (isEditing) {
-          // Сохраняем оригинальный текст
-          row.dataset.originalName = row.querySelector('.cell-name').textContent;
-          row.dataset.originalRole = row.querySelector('.cell-role').textContent;
-          row.dataset.originalEmail = row.querySelector('.cell-email').textContent;
-
-          // Преобразуем в инпуты
-          row.querySelector('.cell-name').innerHTML = `<input class="form-control" value="${row.dataset.originalName}">`;
-          row.querySelector('.cell-role').innerHTML = `
-            <select class="form-select">
-              <option ${row.dataset.originalRole === 'Ученик' ? 'selected' : ''}>Ученик</option>
-              <option ${row.dataset.originalRole === 'Преподаватель' ? 'selected' : ''}>Преподаватель</option>
-              <option ${row.dataset.originalRole === 'Администратор' ? 'selected' : ''}>Администратор</option>
-            </select>`;
-          row.querySelector('.cell-email').innerHTML = `<input class="form-control" value="${row.dataset.originalEmail}">`;
-          this.textContent = 'Сохранить';
-          this.classList.remove('btn-warning');
-          this.classList.add('btn-success');
-        } else {
-          // Чтение новых значений
-          const newName = row.querySelector('.cell-name input').value;
-          const newRole = row.querySelector('.cell-role select').value;
-          const newEmail = row.querySelector('.cell-email input').value;
-
-          // Отправить на сервер здесь, если нужно
-
-          // Отображение как обычный текст
-          row.querySelector('.cell-name').textContent = newName;
-          row.querySelector('.cell-role').textContent = newRole;
-          row.querySelector('.cell-email').textContent = newEmail;
-          this.textContent = 'Редактировать';
-          this.classList.remove('btn-success');
-          this.classList.add('btn-warning');
-        }
+  <script>
+    const toggleBtn = document.getElementById('toggle-theme');
+    toggleBtn.addEventListener('click', () => {
+      const html = document.documentElement;
+      const currentTheme = html.getAttribute('data-bs-theme');
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-bs-theme', newTheme);
+      toggleBtn.textContent = newTheme === 'dark' ? '🌙' : '☀️';
+      document.querySelectorAll('.theme-table').forEach(table => {
+        table.classList.remove('table-dark', 'table-light');
+        table.classList.add(newTheme === 'dark' ? 'table-dark' : 'table-light');
+      });
+      document.querySelectorAll('.btn-outline-light').forEach(btn => {
+        btn.classList.remove('btn-outline-light', 'btn-outline-dark');
+        btn.classList.add(newTheme === 'dark' ? 'btn-outline-light' : 'btn-outline-dark');
       });
     });
-  });
-</script>
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const theme = document.documentElement.getAttribute('data-bs-theme');
+      document.querySelectorAll('.theme-table').forEach(table => {
+        table.classList.add(theme === 'dark' ? 'table-dark' : 'table-light');
+      });
+
+      // Обработка редактирования
+      document.querySelectorAll('.btn-toggle-edit').forEach(button => {
+        button.addEventListener('click', function () {
+          const row = this.closest('tr');
+          const userId = this.dataset.userId;
+          const isEditing = row.classList.toggle('editing');
+
+          if (isEditing) {
+            row.dataset.originalName = row.querySelector('.cell-name').textContent;
+            row.dataset.originalRole = row.querySelector('.cell-role').textContent;
+            row.dataset.originalEmail = row.querySelector('.cell-email').textContent;
+            row.dataset.originalPhone = row.querySelector('.cell-phone').textContent;
+
+            row.querySelector('.cell-name').innerHTML = `<input class="form-control" name="full_name" value="${row.dataset.originalName}">`;
+            row.querySelector('.cell-role').innerHTML = `
+              <select class="form-select" name="role_id">
+                <option value="1" ${row.dataset.originalRole === 'Администратор' ? 'selected' : ''}>Администратор</option>
+                <option value="2" ${row.dataset.originalRole === 'Учитель' ? 'selected' : ''}>Учитель</option>
+                <option value="3" ${row.dataset.originalRole === 'Родитель' ? 'selected' : ''}>Родитель</option>
+                <option value="4" ${row.dataset.originalRole === 'Ученик' ? 'selected' : ''}>Ученик</option>
+              </select>`;
+            row.querySelector('.cell-email').innerHTML = `<input class="form-control" name="email" value="${row.dataset.originalEmail}">`;
+            row.querySelector('.cell-phone').innerHTML = `<input class="form-control" name="phone" value="${row.dataset.originalPhone === '-' ? '' : row.dataset.originalPhone}" pattern="\\+7[0-9]{10}">`;
+            this.textContent = 'Сохранить';
+            this.classList.remove('btn-warning');
+            this.classList.add('btn-success');
+          } else {
+            const newName = row.querySelector('.cell-name input').value;
+            const newRoleId = row.querySelector('.cell-role select').value;
+            const newEmail = row.querySelector('.cell-email input').value;
+            const newPhone = row.querySelector('.cell-phone input').value;
+
+            fetch(`/admin/users/edit/${userId}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                full_name: newName,
+                role_id: newRoleId,
+                email: newEmail,
+                phone: newPhone
+              })
+            })
+            .then(response => response.json())
+            .then(data => {
+              if (data.success) {
+                row.querySelector('.cell-name').textContent = newName;
+                row.querySelector('.cell-role').textContent = data.role_name;
+                row.querySelector('.cell-email').textContent = newEmail;
+                row.querySelector('.cell-phone').textContent = newPhone || '-';
+                this.textContent = 'Редактировать';
+                this.classList.remove('btn-success');
+                this.classList.add('btn-warning');
+              } else {
+                alert('Ошибка при сохранении: ' + data.message);
+              }
+            })
+            .catch(error => {
+              alert('Ошибка сети: ' + error);
+            });
+          }
+        });
+      });
+
+      // Обработка кнопки "Подробнее"
+      document.querySelectorAll('.collapse-row').forEach(collapse => {
+        collapse.addEventListener('show.bs.collapse', function () {
+          const button = document.querySelector(`[data-bs-target="#${this.id}"]`);
+          button.textContent = 'Скрыть';
+          button.classList.remove('btn-info');
+          button.classList.add('btn-secondary');
+        });
+        collapse.addEventListener('hide.bs.collapse', function () {
+          const button = document.querySelector(`[data-bs-target="#${this.id}"]`);
+          button.textContent = 'Подробнее';
+          button.classList.remove('btn-secondary');
+          button.classList.add('btn-info');
+        });
+      });
+    });
+  </script>
 </body>
 </html>
