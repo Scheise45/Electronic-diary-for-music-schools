@@ -44,20 +44,12 @@
     <h2>Административная панель</h2>
     <ul class="list-group">
       <li class="list-group-item">
-        <a href="/admin/users" class="text-decoration-none">👥 Управление пользователями</a>
+        <a class="text-decoration-none notify-link" role="button">👥 Управление пользователями</a>
         <!-- TODO: Реализовать маршрут /admin/users -->
       </li>
       <li class="list-group-item">
-        <a href="/admin/schedule" class="text-decoration-none">📅 Управление расписанием</a>
+        <a class="text-decoration-none notify-link" role="button">📅 Управление расписанием</a>
         <!-- TODO: Реализовать маршрут /admin/schedule -->
-      </li>
-      <li class="list-group-item">
-        <a href="/admin/courses" class="text-decoration-none">🎼 Управление предметами</a>
-        <!-- TODO: Реализовать маршрут /admin/courses -->
-      </li>
-      <li class="list-group-item">
-        <a href="/admin/statistics" class="text-decoration-none">📊 Статистика успеваемости</a>
-        <!-- TODO: Реализовать маршрут /admin/statistics -->
       </li>
     </ul>
   </div>
@@ -70,7 +62,6 @@
       const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
       html.setAttribute('data-bs-theme', newTheme);
       toggleBtn.textContent = newTheme === 'dark' ? '🌙' : '☀️';
-      // Синхронизация с diary.html: обновление стилей таблиц и кнопок
       document.querySelectorAll('.theme-table').forEach(table => {
         table.classList.remove('table-dark', 'table-light');
         table.classList.add(newTheme === 'dark' ? 'table-dark' : 'table-light');
@@ -85,6 +76,29 @@
       const theme = document.documentElement.getAttribute('data-bs-theme');
       document.querySelectorAll('.theme-table').forEach(table => {
         table.classList.add(theme === 'dark' ? 'table-dark' : 'table-light');
+      });
+
+      // Обработка пуш-уведомлений для кнопок
+      const notifyLinks = document.querySelectorAll('.notify-link');
+      notifyLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+          e.preventDefault(); // Предотвращаем переход по ссылке
+          if (Notification.permission === 'granted') {
+            new Notification('Функционал пока не реализован', {
+              body: 'Эта функция находится в разработке.',
+              icon: '/static/favicon.ico' // Опционально, если есть favicon
+            });
+          } else if (Notification.permission !== 'denied') {
+            Notification.requestPermission().then(permission => {
+              if (permission === 'granted') {
+                new Notification('Функционал пока не реализован', {
+                  body: 'Эта функция находится в разработке.',
+                  icon: '/static/favicon.ico'
+                });
+              }
+            });
+          }
+        });
       });
     });
   </script>
