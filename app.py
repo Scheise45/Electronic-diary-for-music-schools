@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, url_for, request, flash, session
+from flask import Flask, render_template, redirect, url_for, request, flash, session, Response
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import OperationalError
@@ -18,7 +18,8 @@ logger = logging.getLogger(__name__)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATE_DIR = os.path.join(BASE_DIR, 'templates')
 app = Flask(__name__, template_folder=TEMPLATE_DIR)
-app.secret_key = os.getenv('FLASK_SECRET_KEY', 'a1b2c3d4e5f67890abcdef1234567890abcdef123456')
+app.secret_key = os.getenv(
+    'FLASK_SECRET_KEY', 'a1b2c3d4e5f67890abcdef1234567890abcdef123456')
 
 # Отладка пути к шаблонам
 logger.info(f"Путь к директории шаблонов: {TEMPLATE_DIR}")
@@ -80,7 +81,8 @@ def load_user(user_id):
                 full_name=user.full_name,
                 role_name=role.name if role else 'Неизвестно'
             )
-            logger.info(f"Пользователь {user_id} загружен: login={user.login}, role_id={user.role_id}")
+            logger.info(
+                f"Пользователь {user_id} загружен: login={user.login}, role_id={user.role_id}")
             return login_user_obj
         logger.warning(f"Пользователь {user_id} не найден")
         return None
@@ -91,6 +93,8 @@ def load_user(user_id):
         db_session.close()
 
 # Проверка подключения к базе
+
+
 def check_db_connection():
     try:
         with engine.connect() as connection:
@@ -114,6 +118,8 @@ def index():
         return "Шаблон index.html не найден", 500
 
 # Тестовый маршрут для проверки шаблона
+
+
 @app.route('/test')
 def test():
     logger.info("Попытка рендеринга test с login.html")
@@ -167,7 +173,8 @@ def login():
                     full_name=user.full_name,
                     role_name=role.name if role else 'Неизвестно'
                 ))
-                logger.info(f"Успешная авторизация: {username}, role_id: {user.role_id}")
+                logger.info(
+                    f"Успешная авторизация: {username}, role_id: {user.role_id}")
                 if user.role_id == 1:
                     return redirect(url_for('admin'))
                 elif user.role_id == 2:
@@ -189,10 +196,13 @@ def login():
     return render_template('login.html')
 
 # Страница администратора
+
+
 @app.route('/admin')
 @login_required
 def admin():
-    logger.info(f"Попытка открыть /admin для пользователя {current_user.login}, role_id={current_user.role_id}")
+    logger.info(
+        f"Попытка открыть /admin для пользователя {current_user.login}, role_id={current_user.role_id}")
     if current_user.role_id != 1:
         logger.warning(f"Доступ запрещён для role_id: {current_user.role_id}")
         logout_user()
@@ -204,7 +214,8 @@ def admin():
         return "Шаблон admin.html не найден", 500
 
     try:
-        logger.info(f"Рендеринг admin.html для пользователя {current_user.login}")
+        logger.info(
+            f"Рендеринг admin.html для пользователя {current_user.login}")
         return render_template('admin.html', current_user=current_user)
     except TemplateNotFound as e:
         logger.error(f"Шаблон admin.html не найден: {e}")
@@ -213,11 +224,88 @@ def admin():
         logger.error(f"Ошибка рендеринга admin.html: {e}")
         return "Внутренняя ошибка сервера", 500
 
+# Управление пользователями (заглушка с пуш-уведомлением)
+
+
+@app.route('/admin/users')
+@login_required
+def admin_users():
+    logger.info(
+        f"Попытка открыть /admin/users для пользователя {current_user.login}, role_id={current_user.role_id}")
+    if current_user.role_id != 1:
+        logger.warning(f"Доступ запрещён для role_id: {current_user.role_id}")
+        logout_user()
+        flash('Доступ запрещён.', 'danger')
+        return redirect(url_for('login'))
+
+    logger.info("Отправка пуш-уведомления для /admin/users")
+    js_code = """
+    <script>
+        if (Notification.permission === 'granted') {
+            new Notification('Функционал пока не реализован', {
+                body: 'Управление пользователями находится в разработке.',
+                icon: '/static/favicon.ico'
+            });
+        } else if (Notification.permission !== 'denied') {
+            Notification.requestPermission().then(permission => {
+                if (permission === 'granted') {
+                    new Notification('Функционал пока не реализован', {
+                        body: 'Управление пользователями находится в разработке.',
+                        icon: '/static/favicon.ico'
+                    });
+                }
+            });
+        }
+        window.history.back(); // Возврат на предыдущую страницу
+    </script>
+    """
+    return Response(js_code, mimetype='text/html')
+
+# Управление расписанием (заглушка с пуш-уведомлением)
+
+
+@app.route('/admin/schedule')
+@login_required
+def admin_schedule():
+    logger.info(
+        f"Попытка открыть /admin/schedule для пользователя {current_user.login}, role_id={current_user.role_id}")
+    if current_user.role_id != 1:
+        logger.warning(f"Доступ запрещён для role_id: {current_user.role_id}")
+        logout_user()
+        flash('Доступ запрещён.', 'danger')
+        return redirect(url_for('login'))
+
+    logger.info("Отправка пуш-уведомления для /admin/schedule")
+    js_code = """
+    <script>
+        if (Notification.permission === 'granted') {
+            new Notification('Функционал пока не реализован', {
+                body: 'Управление расписанием находится в разработке.',
+                icon: '/static/favicon.ico'
+            });
+        } else if (Notification.permission !== 'denied') {
+            Notification.requestPermission().then(permission => {
+                if (permission === 'granted') {
+                    new Notification('Функционал пока не реализован', {
+                        body: 'Управление расписанием находится в разработке.',
+                        icon: '/static/favicon.ico'
+                    });
+                }
+            });
+        }
+        window.history.back(); // Возврат на предыдущую страницу
+    </script>
+    """
+    return Response(js_code, mimetype='text/html')
+
 # Страница расписания преподавателя
+
+
 @app.route('/tr-schedule')
 @login_required
 def tr_schedule():
-    logger.info(f"Попытка открыть /tr-schedule для пользователя {current_user.login}, role_id={current_user.role_id}")
+    logger.info(
+        f"Попытка открыть /tr-schedule для пользователя {current_user.login}, role_id={current_user.role_id}")
     if current_user.role_id != 2:
         logger.warning(f"Доступ запрещён для role_id: {current_user.role_id}")
         logout_user()
@@ -241,7 +329,8 @@ def tr_schedule():
                 flash('Неверный формат даты.', 'danger')
                 selected_date = None
 
-        logger.info(f"Рендеринг teacher_schedule.html для пользователя {current_user.login}")
+        logger.info(
+            f"Рендеринг teacher_schedule.html для пользователя {current_user.login}")
         return render_template(
             'teacher_schedule.html',
             current_user=current_user,
@@ -261,151 +350,164 @@ def tr_schedule():
 @app.route('/diary')
 @login_required
 def diary():
-    logger.info(f"Попытка открыть /diary для пользователя {current_user.login}, role_id={current_user.role_id}")
+    logger.info(
+        f"Попытка открыть /diary для пользователя {current_user.login}, role_id={current_user.role_id}")
     if current_user.role_id not in [3, 4]:
         logger.warning(f"Доступ запрещён для role_id: {current_user.role_id}")
         logout_user()
         flash('Доступ запрещён.', 'danger')
         return redirect(url_for('login'))
 
+    if not template_exists('diary.html'):
+        logger.error("Шаблон diary.html отсутствует")
+        return "Шаблон diary.html не найден", 500
+
     try:
-        return render_template('diary.html')
+        # Проверка подключения к базе
+        if not check_db_connection():
+            flash('Ошибка подключения к базе данных. Попробуйте позже.', 'danger')
+            logger.error("Перенаправление на /index из-за ошибки базы")
+            return redirect(url_for('index'))
+
+        # Обработка параметра даты
+        selected_date = request.args.get('date')
+        try:
+            if selected_date:
+                selected_date = datetime.strptime(
+                    selected_date, '%Y-%m-%d').date()
+            else:
+                selected_date = datetime.now().date()
+        except ValueError:
+            logger.warning(f"Неверный формат даты: {selected_date}")
+            flash('Неверный формат даты.', 'danger')
+            selected_date = datetime.now().date()
+
+        db_session = DBSession()
+        try:
+            # Находим student_id и student_year для текущего пользователя
+            student = db_session.query(Student).filter_by(
+                user_id=current_user.id).first()
+            if not student:
+                logger.warning(
+                    f"Пользователь {current_user.login} не является студентом")
+                flash(
+                    'Расписание недоступно: пользователь не зарегистрирован как студент.', 'danger')
+                return redirect(url_for('index'))
+
+            # Находим текущий учебный год (предполагаем последний по ID)
+            current_year = db_session.query(StudentYear).order_by(
+                StudentYear.id.desc()).first()
+            if not current_year:
+                logger.error("Текущий учебный год не найден")
+                flash('Расписание недоступно: учебный год не задан.', 'danger')
+                return redirect(url_for('index'))
+
+            student_year = db_session.query(StudentYear).filter_by(
+                student_id=student.id,
+                school_year_id=current_year.id
+            ).first()
+            if not student_year:
+                logger.warning(
+                    f"Для студента {student.id} не найден учебный год")
+                flash(
+                    'Расписание недоступно: данные об учебном годе отсутствуют.', 'danger')
+                return redirect(url_for('index'))
+
+            # Инициализация расписания для всех дней
+            schedules = {
+                1: [],  # Понедельник
+                2: [],  # Вторник
+                3: [],  # Среда
+                4: [],  # Четверг
+                5: [],  # Пятница
+                6: [],  # Суббота
+                7: []   # Воскресенье
+            }
+
+            # Запрос расписания из таблицы schedule
+            schedule_items = db_session.query(Schedule, Subject, User).join(
+                Subject, Schedule.subject_id == Subject.id
+            ).join(
+                Teacher, Schedule.teacher_id == Teacher.id
+            ).join(
+                User, Teacher.user_id == User.id
+            ).filter(
+                Schedule.school_year_id == current_year.id,
+                Schedule.class_group == student_year.class_group,
+                Schedule.class_letter == student_year.class_letter
+            ).all()
+
+            for schedule, subject, teacher_user in schedule_items:
+                day = schedule.day_of_week
+                if day not in schedules:
+                    continue
+
+                # Находим домашнее задание
+                homework = db_session.query(Homework).filter(
+                    Homework.school_year_id == current_year.id,
+                    Homework.date == selected_date,
+                    Homework.class_group == student_year.class_group,
+                    Homework.class_letter == student_year.class_letter,
+                    Homework.subject_id == schedule.subject_id
+                ).first()
+
+                # Находим оценку
+                grade = db_session.query(Grade).filter(
+                    Grade.student_year_id == student_year.id,
+                    Grade.date == selected_date,
+                    Grade.subject_id == schedule.subject_id,
+                    Grade.lesson_number == schedule.lesson_number
+                ).first()
+
+                schedules[day].append({
+                    'subject': subject.name,
+                    'homework': homework.text if homework else 'Нет задания',
+                    'file': 'no_file.pdf',  # Заглушка, пока нет поля для файла
+                    'grade': grade.grade if grade else '-',
+                    'teacher': teacher_user.full_name
+                })
+
+            # Формируем расписание для шаблона
+            monday_schedule = schedules[1]
+            tuesday_schedule = schedules[2]
+            wednesday_schedule = schedules[3]
+            thursday_schedule = schedules[4]
+            friday_schedule = schedules[5]
+            saturday_schedule = schedules[6]
+            sunday_schedule = schedules[7]
+
+            logger.info(
+                f"Рендеринг diary.html для даты {selected_date}, пользователь: {current_user.login}")
+            return render_template(
+                'diary.html',
+                monday_schedule=monday_schedule,
+                tuesday_schedule=tuesday_schedule,
+                wednesday_schedule=wednesday_schedule,
+                thursday_schedule=thursday_schedule,
+                friday_schedule=friday_schedule,
+                saturday_schedule=saturday_schedule,
+                sunday_schedule=sunday_schedule,
+                current_user=current_user
+            )
+
+        finally:
+            db_session.close()
+
     except TemplateNotFound as e:
         logger.error(f"Шаблон diary.html не найден: {e}")
         return "Шаблон diary.html не найден", 500
-
-    # Проверка подключения к базе
-    if not check_db_connection():
-        flash('Ошибка подключения к базе данных. Попробуйте позже.', 'danger')
-        logger.error("Перенаправление на /index из-за ошибки базы")
-        return redirect(url_for('index'))
-
-    # Обработка параметра даты
-    selected_date = request.args.get('date')
-    try:
-        if selected_date:
-            selected_date = datetime.strptime(selected_date, '%Y-%m-%d').date()
-        else:
-            selected_date = datetime.now().date()
-    except ValueError:
-        logger.warning(f"Неверный формат даты: {selected_date}")
-        flash('Неверный формат даты.', 'danger')
-        selected_date = datetime.now().date()
-
-    db_session = DBSession()
-    try:
-        # Находим student_id и student_year для текущего пользователя
-        student = db_session.query(Student).filter_by(user_id=current_user.id).first()
-        if not student:
-            logger.warning(f"Пользователь {current_user.login} не является студентом")
-            flash('Расписание недоступно: пользователь не зарегистрирован как студент.', 'danger')
-            return redirect(url_for('index'))
-
-        # Находим текущий учебный год (предполагаем последний по ID)
-        current_year = db_session.query(SchoolYear).order_by(SchoolYear.id.desc()).first()
-        if not current_year:
-            logger.error("Текущий учебный год не найден")
-            flash('Расписание недоступно: учебный год не задан.', 'danger')
-            return redirect(url_for('index'))
-
-        student_year = db_session.query(StudentYear).filter_by(
-            student_id=student.id,
-            school_year_id=current_year.id
-        ).first()
-        if not student_year:
-            logger.warning(f"Для студента {student.id} не найден учебный год")
-            flash('Расписание недоступно: данные об учебном годе отсутствуют.', 'danger')
-            return redirect(url_for('index'))
-
-        # Инициализация расписания для всех дней
-        schedules = {
-            1: [],  # Понедельник
-            2: [],  # Вторник
-            3: [],  # Среда
-            4: [],  # Четверг
-            5: [],  # Пятница
-            6: [],  # Суббота
-            7: []   # Воскресенье
-        }
-
-        # Запрос расписания из таблицы schedule
-        schedule_items = db_session.query(Schedule, Subject, User).join(
-            Subject, Schedule.subject_id == Subject.id
-        ).join(
-            Teacher, Schedule.teacher_id == Teacher.id
-        ).join(
-            User, Teacher.user_id == User.id
-        ).filter(
-            Schedule.school_year_id == current_year.id,
-            Schedule.class_group == student_year.class_group,
-            Schedule.class_letter == student_year.class_letter
-        ).all()
-
-        for schedule, subject, teacher_user in schedule_items:
-            day = schedule.day_of_week
-            if day not in schedules:
-                continue
-
-            # Находим домашнее задание
-            homework = db_session.query(Homework).filter(
-                Homework.school_year_id == current_year.id,
-                Homework.date == selected_date,
-                Homework.class_group == student_year.class_group,
-                Homework.class_letter == student_year.class_letter,
-                Homework.subject_id == schedule.subject_id
-            ).first()
-
-            # Находим оценку
-            grade = db_session.query(Grade).filter(
-                Grade.student_year_id == student_year.id,
-                Grade.date == selected_date,
-                Grade.subject_id == schedule.subject_id,
-                Grade.lesson_number == schedule.lesson_number
-            ).first()
-
-            schedules[day].append({
-                'subject': subject.name,
-                'homework': homework.text if homework else 'Нет задания',
-                'file': 'no_file.pdf',  # Заглушка, пока нет поля для файла
-                'grade': grade.grade if grade else '-',
-                'teacher': teacher_user.full_name
-            })
-
-        # Формируем расписание для шаблона
-        monday_schedule = schedules[1]
-        tuesday_schedule = schedules[2]
-        wednesday_schedule = schedules[3]
-        thursday_schedule = schedules[4]
-        friday_schedule = schedules[5]
-        saturday_schedule = schedules[6]
-        sunday_schedule = schedules[7]
-
-        logger.info(f"Рендеринг diary.html для даты {selected_date}, пользователь: {current_user.login}")
-        return render_template(
-            'diary.html',
-            monday_schedule=monday_schedule,
-            tuesday_schedule=tuesday_schedule,
-            wednesday_schedule=wednesday_schedule,
-            thursday_schedule=thursday_schedule,
-            friday_schedule=friday_schedule,
-            saturday_schedule=saturday_schedule,
-            sunday_schedule=sunday_schedule,
-            current_user=current_user
-        )
-
     except Exception as e:
         logger.error(f"Ошибка при загрузке расписания: {e}")
         flash('Произошла ошибка при загрузке расписания.', 'danger')
         return redirect(url_for('index'))
-    finally:
-        db_session.close()
 
 # Выход
 
 
 @app.route('/logout')
 def logout():
-    logger.info(f"Выход пользователя: {current_user.login if current_user.is_authenticated else 'Неизвестный'}")
+    logger.info(
+        f"Выход пользователя: {current_user.login if current_user.is_authenticated else 'Неизвестный'}")
     logout_user()
     flash('Вы вышли из системы.', 'info')
     return redirect(url_for('index'))
