@@ -50,7 +50,13 @@
       <div class="d-flex align-items-center gap-2 ms-auto">
         {% if current_user.is_authenticated %}
         <span class="navbar-text me-2">
-          {{ current_user.full_name }} ({{ current_user.role_name|capitalize }})
+          {{ current_user.full_name }} (
+          {% if current_user.role_id == 1 %}Администратор
+          {% elif current_user.role_id == 2 %}Учитель
+          {% elif current_user.role_id == 3 %}Родитель
+          {% elif current_user.role_id == 4 %}Ученик
+          {% else %}Неизвестно{% endif %}
+          )
         </span>
         <a href="{{ url_for('logout') }}" class="btn btn-outline-light">Выйти</a>
         {% endif %}
@@ -80,7 +86,6 @@
           <thead class="table-secondary">
             <tr>
               <th>Ученик / Группа</th>
-              <th>Кабинет</th>
               <th>Ученики</th>
               <th>Домашнее задание</th>
             </tr>
@@ -89,23 +94,20 @@
             {% for lesson in schedule %}
             <tr>
               <td>{{ lesson.student_or_group }}</td>
-              <td>{{ lesson.classroom }}</td>
               <td>
                 <a href="/mark/{{ lesson.id }}" class="btn btn-sm btn-outline-success">
                   Отметить
                 </a>
-                <!-- TODO: Реализовать маршрут /mark/{id} -->
               </td>
               <td>
                 <a href="/homework/{{ lesson.id }}" class="btn btn-sm btn-outline-primary">
                   Задать
                 </a>
-                <!-- TODO: Реализовать маршрут /homework/{id} -->
               </td>
             </tr>
             {% else %}
             <tr>
-              <td colspan="4" class="text-center">На сегодня занятий нет.</td>
+              <td colspan="3" class="text-center">На сегодня занятий нет.</td>
             </tr>
             {% endfor %}
           </tbody>
@@ -120,7 +122,7 @@
   <script>
     flatpickr("#datePicker", {
       dateFormat: "Y-m-d",
-      defaultDate: "today",
+      defaultDate: "{{ selected_date }}",
       locale: "ru",
       disableMobile: true,
       onReady: function (selectedDates, dateStr, instance) {
@@ -135,8 +137,17 @@
       const date = document.getElementById('datePicker').value;
       if (date) {
         window.location.href = `/tr-schedule?date=${date}`;
+        const modal = bootstrap.Modal.getInstance(document.getElementById('calendarModal'));
+        modal.hide();
       }
     }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const theme = document.documentElement.getAttribute('data-bs-theme');
+      document.querySelectorAll('.theme-table').forEach(table => {
+        table.classList.add(theme === 'dark' ? 'table-dark' : 'table-light');
+      });
+    });
 
     const toggleBtn = document.getElementById('toggle-theme');
     toggleBtn.addEventListener('click', () => {
@@ -149,16 +160,9 @@
         table.classList.remove('table-dark', 'table-light');
         table.classList.add(newTheme === 'dark' ? 'table-dark' : 'table-light');
       });
-      document.querySelectorAll('.btn-outline-light').forEach(btn => {
+      document.querySelectorAll('.btn-outline-light, .btn-outline-dark').forEach(btn => {
         btn.classList.remove('btn-outline-light', 'btn-outline-dark');
         btn.classList.add(newTheme === 'dark' ? 'btn-outline-light' : 'btn-outline-dark');
-      });
-    });
-
-    document.addEventListener('DOMContentLoaded', () => {
-      const theme = document.documentElement.getAttribute('data-bs-theme');
-      document.querySelectorAll('.theme-table').forEach(table => {
-        table.classList.add(theme === 'dark' ? 'table-dark' : 'table-light');
       });
     });
   </script>

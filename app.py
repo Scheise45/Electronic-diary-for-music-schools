@@ -2,7 +2,10 @@ from flask import Flask, render_template, redirect, url_for, request, flash, ses
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import OperationalError, IntegrityError
-from models import User, Student, StudentYear, Schedule, Homework, Grade, Subject, Teacher, Session as DBSession
+from models.reference import SchoolYear, Subject
+from models.users import User, Student, Teacher
+from models.school import StudentYear, Schedule, Homework, Grade
+from models import Session as DBSession
 from models.base import engine
 import os
 import logging
@@ -600,187 +603,249 @@ def admin_schedule():
 @app.route('/tr-schedule')
 @login_required
 def tr_schedule():
-    logger.info(
-        f"Попытка открыть /tr-schedule для пользователя {current_user.login}, role_id={current_user.role_id}")
+    logger.info(f"Попытка открыть /tr-schedule для пользователя {current_user.login}, role_id={current_user.role_id}")
+
+    # Установка role_name
+    try:
+        role = DBSession().query(Role).filter_by(id=current_user.role_id).first()
+        current_user.role_name = role.name if role else 'Неизвестно'
+        logger.debug(f"Установлен role_name: {current_user.role_name}")
+    except Exception as e:
+        logger.error(f"Ошибка получения role_name: {str(e)}")
+        current_user.role_name = 'Неизвестно'
+
+    # Проверка прав доступа
     if current_user.role_id != 2:
         logger.warning(f"Доступ запрещён для role_id: {current_user.role_id}")
         logout_user()
         flash('Доступ запрещён.', 'danger')
         return redirect(url_for('login'))
 
+    # Проверка шаблона
     if not template_exists('teacher_schedule.html'):
         logger.error("Шаблон teacher_schedule.html отсутствует")
         return "Шаблон teacher_schedule.html не найден", 500
 
+    db_session = DBSession()
     try:
-        schedule = []
+        # Обработка даты
         selected_date = request.args.get('date')
         if selected_date:
             try:
-                datetime.strptime(selected_date, '%Y-%m-%d')
+                selected_date = datetime.strptime(selected_date, '%Y-%m-%d').date()
                 logger.info(f"Выбрана дата: {selected_date}")
             except ValueError:
                 logger.warning(f"Неверный формат даты: {selected_date}")
-                flash('Неверный формат даты.', 'danger')
-                selected_date = None
+                flash('Неверный формат даты.', 'warning')
+                selected_date = datetime.now().date()
+        else:
+            selected_date = datetime.now().date()
 
-        logger.info(
-            f"Рендеринг teacher_schedule.html для пользователя {current_user.login}")
+        # Проверка учебного года
+        current_year = db_session.query(SchoolYear).order_by(SchoolYear.id.desc()).first()
+        if not current_year:
+            logger.error("Текущий учебный год не найден")
+            flash('Учебный год не задан.', 'danger')
+            return render_template(
+                'teacher_schedule.html',
+                current_user=current_user,
+                schedule=[],
+                selected_date=selected_date.strftime('%Y-%m-%d')
+            )
+
+        # Получение teacher_id
+        teacher = db_session.query(Teacher).filter_by(user_id=current_user.id).first()
+        if not teacher:
+            logger.error(f"Пользователь {current_user.login} (user_id={current_user.id}) не является учителем")
+            flash('Вы не зарегистрированы как преподаватель.', 'danger')
+            return render_template(
+                'teacher_schedule.html',
+                current_user=current_user,
+                schedule=[],
+                selected_date=selected_date.strftime('%Y-%m-%d')
+            )
+
+        # Получение расписания
+        schedule_items = db_session.query(Schedule, Subject).join(
+            Subject, Schedule.subject_id == Subject.id
+        ).filter(
+            Schedule.school_year_id == current_year.id,
+            Schedule.teacher_id == teacher.id,
+            Schedule.day_of_week == selected_date.weekday()  # 0=понедельник, 6=воскресенье
+        ).order_by(Schedule.lesson_number).all()
+
+        logger.debug(f"Найдено {len(schedule_items)} записей в расписании для teacher_id={teacher.id}")
+
+        schedule = []
+        for s, sub in schedule_items:
+            schedule.append({
+                'id': s.id,
+                'student_or_group': f"{s.class_group}{s.class_letter}",
+                'subject': sub.name
+            })
+
+        logger.info(f"Рендеринг teacher_schedule.html для пользователя {current_user.login}")
         return render_template(
             'teacher_schedule.html',
             current_user=current_user,
             schedule=schedule,
-            selected_date=selected_date
+            selected_date=selected_date.strftime('%Y-%m-%d')
         )
+
     except TemplateNotFound as e:
         logger.error(f"Шаблон teacher_schedule.html не найден: {e}")
         return "Шаблон teacher_schedule.html не найден", 500
     except Exception as e:
-        logger.error(f"Ошибка рендеринга teacher_schedule.html: {e}")
-        return "Внутренняя ошибка сервера", 500
+        logger.error(f"Ошибка рендеринга teacher_schedule.html: {e}", exc_info=True)
+        flash('Произошла ошибка при загрузке расписания.', 'danger')
+        return render_template(
+            'teacher_schedule.html',
+            current_user=current_user,
+            schedule=[],
+            selected_date=selected_date.strftime('%Y-%m-%d')
+        )
+    finally:
+        db_session.close()
+
 
 # Страница дневника
-
-
 @app.route('/diary')
 @login_required
 def diary():
-    logger.info(
-        f"Попытка открыть /diary для пользователя {current_user.login}, role_id={current_user.role_id}")
-    if current_user.role_id not in [3, 4]:
-        logger.warning(f"Доступ запрещён для role_id: {current_user.role_id}")
-        logout_user()
-        flash('Доступ запрещён.', 'danger')
-        return redirect(url_for('login'))
+    logger.info(f"Попытка открыть /diary для пользователя {current_user.login}, role_id={current_user.role_id}")
 
-    if not template_exists('diary.html'):
-        logger.error("Шаблон diary.html отсутствует")
-        return "Шаблон diary.html не найден", 500
-
+    # Временное решение для role_name
     try:
-        if not check_db_connection():
-            flash('Ошибка подключения к базе данных. Попробуйте позже.', 'danger')
-            logger.error("Перенаправление на /index из-за ошибки базы")
-            return redirect(url_for('index'))
+        role = DBSession().query(Role).filter_by(id=current_user.role_id).first()
+        current_user.role_name = role.name if role else 'Неизвестно'
+    except Exception as e:
+        logger.error(f"Ошибка получения role_name: {str(e)}")
+        current_user.role_name = 'Неизвестно'
 
-        selected_date = request.args.get('date')
-        try:
-            if selected_date:
-                selected_date = datetime.strptime(
-                    selected_date, '%Y-%m-%d').date()
-            else:
-                selected_date = datetime.now().date()
-        except ValueError:
-            logger.warning(f"Неверный формат даты: {selected_date}")
-            flash('Неверный формат даты.', 'danger')
-            selected_date = datetime.now().date()
+    # Проверка прав доступа
+    error_message = None
+    if current_user.role_id not in [3, 4]:
+        error_message = 'Доступ разрешён только ученикам и родителям.'
+        logger.warning(f"Доступ запрещён для role_id: {current_user.role_id}")
+        flash(error_message, 'danger')
 
-        db_session = DBSession()
-        try:
-            student = db_session.query(Student).filter_by(
-                user_id=current_user.id).first()
-            if not student:
-                logger.warning(
-                    f"Пользователь {current_user.login} не является студентом")
-                flash(
-                    'Расписание недоступно: пользователь не зарегистрирован как студент.', 'danger')
-                return redirect(url_for('index'))
+    # Обработка даты
+    selected_date = request.args.get('date')
+    logger.debug(f"Получен параметр date: {selected_date}")
+    try:
+        selected_date = datetime.strptime(selected_date, '%Y-%m-%d').date() if selected_date else datetime.now().date()
+    except ValueError:
+        logger.warning(f"Неверный формат даты: {selected_date}")
+        selected_date = datetime.now().date()
+        flash('Неверный формат даты.', 'warning')
 
-            current_year = db_session.query(StudentYear).order_by(
-                StudentYear.id.desc()).first()
-            if not current_year:
-                logger.error("Текущий учебный год не найден")
-                flash('Расписание недоступно: учебный год не задан.', 'danger')
-                return redirect(url_for('index'))
-
-            student_year = db_session.query(StudentYear).filter_by(
-                student_id=student.id,
-                school_year_id=current_year.id
-            ).first()
-            if not student_year:
-                logger.warning(
-                    f"Для студента {student.id} не найден учебный год")
-                flash(
-                    'Расписание недоступно: данные об учебном годе отсутствуют.', 'danger')
-                return redirect(url_for('index'))
-
-            schedules = {
-                1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: []
-            }
-
-            schedule_items = db_session.query(Schedule, Subject, User).join(
-                Subject, Schedule.subject_id == Subject.id
-            ).join(
-                Teacher, Schedule.teacher_id == Teacher.id
-            ).join(
-                User, Teacher.user_id == User.id
-            ).filter(
-                Schedule.school_year_id == current_year.id,
-                Schedule.class_group == student_year.class_group,
-                Schedule.class_letter == student_year.class_letter
-            ).all()
-
-            for schedule, subject, teacher_user in schedule_items:
-                day = schedule.day_of_week
-                if day not in schedules:
-                    continue
-
-                homework = db_session.query(Homework).filter(
-                    Homework.school_year_id == current_year.id,
-                    Homework.date == selected_date,
-                    Homework.class_group == student_year.class_group,
-                    Homework.class_letter == student_year.class_letter,
-                    Homework.subject_id == schedule.subject_id
-                ).first()
-
-                grade = db_session.query(Grade).filter(
-                    Grade.student_year_id == student_year.id,
-                    Grade.date == selected_date,
-                    Grade.subject_id == schedule.subject_id,
-                    Grade.lesson_number == schedule.lesson_number
-                ).first()
-
-                schedules[day].append({
-                    'subject': subject.name,
-                    'homework': homework.text if homework else 'Нет задания',
-                    'file': 'no_file.pdf',
-                    'grade': grade.grade if grade else '-',
-                    'teacher': teacher_user.full_name
-                })
-
-            monday_schedule = schedules[1]
-            tuesday_schedule = schedules[2]
-            wednesday_schedule = schedules[3]
-            thursday_schedule = schedules[4]
-            friday_schedule = schedules[5]
-            saturday_schedule = schedules[6]
-            sunday_schedule = schedules[7]
-
-            logger.info(
-                f"Рендеринг diary.html для даты {selected_date}, пользователь: {current_user.login}")
+    # Инициализация расписания
+    schedules = {1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: []}
+    db_session = DBSession()
+    try:
+        # Проверка студента
+        student = db_session.query(Student).filter_by(user_id=current_user.id).first()
+        if not student:
+            error_message = 'Вы не зарегистрированы как студент.'
+            logger.error(f"Пользователь {current_user.login} (user_id={current_user.id}) не является студентом")
+            flash(error_message, 'danger')
             return render_template(
                 'diary.html',
-                monday_schedule=monday_schedule,
-                tuesday_schedule=tuesday_schedule,
-                wednesday_schedule=wednesday_schedule,
-                thursday_schedule=thursday_schedule,
-                friday_schedule=friday_schedule,
-                saturday_schedule=saturday_schedule,
-                sunday_schedule=sunday_schedule,
-                current_user=current_user
+                monday_schedule=schedules[1], tuesday_schedule=schedules[2], wednesday_schedule=schedules[3],
+                thursday_schedule=schedules[4], friday_schedule=schedules[5], saturday_schedule=schedules[6],
+                sunday_schedule=schedules[7], current_user=current_user, selected_date=selected_date,
+                selected_date_str=selected_date.strftime('%Y-%m-%d'), error_message=error_message
             )
 
-        finally:
-            db_session.close()
+        # Проверка учебного года
+        current_year = db_session.query(SchoolYear).order_by(SchoolYear.id.desc()).first()
+        if not current_year:
+            error_message = 'Учебный год не задан.'
+            logger.error("Текущий учебный год не найден")
+            flash(error_message, 'danger')
+            return render_template(
+                'diary.html',
+                monday_schedule=schedules[1], tuesday_schedule=schedules[2], wednesday_schedule=schedules[3],
+                thursday_schedule=schedules[4], friday_schedule=schedules[5], saturday_schedule=schedules[6],
+                sunday_schedule=schedules[7], current_user=current_user, selected_date=selected_date,
+                selected_date_str=selected_date.strftime('%Y-%m-%d'), error_message=error_message
+            )
 
-    except TemplateNotFound as e:
-        logger.error(f"Шаблон diary.html не найден: {e}")
-        return "Шаблон diary.html не найден", 500
+        # Проверка student_years
+        student_year = db_session.query(StudentYear).filter_by(
+            student_id=student.id, school_year_id=current_year.id
+        ).first()
+        if not student_year:
+            error_message = 'Данные об учебном годе отсутствуют.'
+            logger.error(f"Для студента {student.id} не найден учебный год school_year_id={current_year.id}")
+            flash(error_message, 'danger')
+            return render_template(
+                'diary.html',
+                monday_schedule=schedules[1], tuesday_schedule=schedules[2], wednesday_schedule=schedules[3],
+                thursday_schedule=schedules[4], friday_schedule=schedules[5], saturday_schedule=schedules[6],
+                sunday_schedule=schedules[7], current_user=current_user, selected_date=selected_date,
+                selected_date_str=selected_date.strftime('%Y-%m-%d'), error_message=error_message
+            )
+
+        # Получение расписания
+        schedule_items = db_session.query(Schedule, Subject, User).join(
+            Subject, Schedule.subject_id == Subject.id
+        ).join(
+            Teacher, Schedule.teacher_id == Teacher.id
+        ).join(
+            User, Teacher.user_id == User.id
+        ).filter(
+            Schedule.school_year_id == current_year.id,
+            Schedule.class_group == student_year.class_group,
+            Schedule.class_letter == student_year.class_letter
+        ).order_by(Schedule.day_of_week, Schedule.lesson_number).all()
+
+        logger.debug(f"Найдено {len(schedule_items)} записей в расписании")
+
+        for schedule, subject, teacher_user in schedule_items:
+            day = schedule.day_of_week
+            if day not in schedules:
+                logger.warning(f"Недопустимый day_of_week: {day}")
+                continue
+
+            homework = db_session.query(Homework).filter(
+                Homework.school_year_id == current_year.id,
+                Homework.date == selected_date,
+                Homework.class_group == student_year.class_group,
+                Homework.class_letter == student_year.class_letter,
+                Homework.subject_id == schedule.subject_id
+            ).first()
+
+            grade = db_session.query(Grade).filter(
+                Grade.student_year_id == student_year.id,
+                Grade.date == selected_date,
+                Grade.subject_id == schedule.subject_id,
+                Grade.lesson_number == schedule.lesson_number
+            ).first()
+
+            schedules[day].append({
+                'subject': subject.name,
+                'homework': homework.text if homework else 'Нет задания',
+                'file': 'no_file.pdf',  # Заглушка для колонки "Файл"
+                'grade': grade.grade if grade else '-',
+                'teacher': teacher_user.full_name
+            })
+
     except Exception as e:
-        logger.error(f"Ошибка при загрузке расписания: {e}")
-        flash('Произошла ошибка при загрузке расписания.', 'danger')
-        return redirect(url_for('index'))
+        logger.error(f"Ошибка в функции diary: {str(e)}", exc_info=True)
+        error_message = 'Произошла ошибка при загрузке расписания.'
+        flash(error_message, 'danger')
 
+    finally:
+        db_session.close()
+
+    return render_template(
+        'diary.html',
+        monday_schedule=schedules[1], tuesday_schedule=schedules[2], wednesday_schedule=schedules[3],
+        thursday_schedule=schedules[4], friday_schedule=schedules[5], saturday_schedule=schedules[6],
+        sunday_schedule=schedules[7], current_user=current_user, selected_date=selected_date,
+        selected_date_str=selected_date.strftime('%Y-%m-%d'), error_message=error_message
+    )
 # Выход
 
 
