@@ -1,116 +1,123 @@
-  <!DOCTYPE html>
-  <html lang="ru" data-bs-theme="light">
+<!DOCTYPE html>
+<html lang="ru" data-bs-theme="light">
 
-  <head>
-    <meta charset="UTF-8">
-    <title>Главная | Музыкальная школа</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-      html,
-      body {
-        height: 100%;
-        margin: 0;
-      }
+<head>
+  <meta charset="UTF-8">
+  <title>Главная | Музыкальная школа</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: url('https://cdn.culture.ru/images/4a36fca3-dd5c-5e9b-bf77-eebf8a25f430') no-repeat center center fixed;
+      background-size: cover;
+      position: relative;
+      margin: 0;
+      padding: 0;
+    }
+    html, body {
+      height: 100%;
+      margin: 0;
+    }
 
+
+    .main-layout {
+      display: flex;
+      height: 100vh;
+      flex-wrap: wrap;
+    }
+
+    .left-panel {
+      width: 33.33%;
+      background-color: #0d6efd;
+      color: white;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+
+    .login-button {
+      background-color: orange;
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      font-size: 1.1rem;
+      text-align: center;
+      text-decoration: none;
+      border-radius: 0.5rem;
+      display: inline-block;
+      margin: 1rem 0;
+      white-space: normal;
+    }
+
+    .login-button:hover {
+      background-color: darkorange;
+      color: white;
+    }
+
+    .right-panel {
+      width: 66.67%;
+      position: relative;
+      background: url('') no-repeat center center;
+      background-size: cover;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+    }
+
+    .text-overlay {
+      background-color: white;
+      padding: 1rem 2rem;
+      margin: 2rem;
+      border-radius: 0.5rem;
+      max-width: 90%;
+      text-align: center;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+    }
+
+    @media (max-width: 768px) {
       .main-layout {
-        display: flex;
-        height: 100vh;
-        flex-wrap: wrap;
-      }
-
-      .left-panel {
-        width: 33.33%;
-        background-color: #0d6efd;
-        color: white;
-        padding: 2rem;
-        display: flex;
         flex-direction: column;
-        justify-content: space-between;
-        word-wrap: break-word;
-        overflow-wrap: break-word;
       }
 
-      .login-button {
-        background-color: orange;
-        color: white;
-        border: none;
-        padding: 0.75rem 1.5rem;
-        font-size: 1.1rem;
-        text-align: center;
-        text-decoration: none;
-        border-radius: 0.5rem;
-        display: inline-block;
-        margin: 1rem 0;
-        white-space: normal;
-      }
-
-      .login-button:hover {
-        background-color: darkorange;
-        color: white;
-      }
-
+      .left-panel,
       .right-panel {
-        width: 66.67%;
-        position: relative;
-        background: url('') no-repeat center center;
-        background-size: cover;
-        display: flex;
-        align-items: flex-end;
-        justify-content: center;
+        width: 100%;
+        height: auto;
       }
+    }
+  </style>
+</head>
 
-      .text-overlay {
-        background-color: white;
-        padding: 1rem 2rem;
-        margin: 2rem;
-        border-radius: 0.5rem;
-        max-width: 90%;
-        text-align: center;
-        word-wrap: break-word;
-        overflow-wrap: break-word;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-      }
+<body>
 
-      @media (max-width: 768px) {
-        .main-layout {
-          flex-direction: column;
-        }
-
-        .left-panel,
-        .right-panel {
-          width: 100%;
-          height: auto;
-        }
-      }
-    </style>
-  </head>
-
-  <body>
-
-    <div class="main-layout">
-      <div class="left-panel">
-        <div>
-          <h3>О школе</h3>
-          <p>Здесь будет информация о музыкальной школе.</p>
-        </div>
-
-        <div class="text-center">
-          <a href="{{ url_for('login') }}" class="login-button">Вход</a>
-        </div>
-
-        <div>
-          <p>Дополнительная информация снизу.</p>
-        </div>
+  <div class="main-layout">
+    <div class="left-panel">
+      <div>
+        <h3>О школе</h3>
+        <p>Здесь будет информация о музыкальной школе.</p>
       </div>
 
-      <div class="right-panel">
-        <div class="text-overlay">
-          <h4>Ваш текст здесь</h4>
-          <p>еще что-то</p>
-        </div>
+      <div class="text-center">
+        <a href="{{ url_for('login') }}" class="login-button">Вход</a>
+      </div>
+
+      <div>
+        <p>Дополнительная информация снизу.</p>
       </div>
     </div>
 
-  </body>
+    <div class="right-panel">
+      <div class="text-overlay">
+        <h4>Ваш текст здесь</h4>
+        <p>еще что-то</p>
+      </div>
+    </div>
+  </div>
 
-  </html>
+</body>
+
+</html>

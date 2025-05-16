@@ -2,8 +2,11 @@
 <html lang="ru" data-bs-theme="dark">
 <head>
   <meta charset="UTF-8">
-  <title>Кабинет ученика | Музыкальная школа</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Расписание преподавателя | Музыкальная школа</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <style>
     .btn.no-hover:hover {
@@ -13,112 +16,152 @@
     }
   </style>
 </head>
-<body class="dark-mode">
+<body>
+  <!-- Кнопка вызова календаря -->
+  <div class="position-fixed bottom-0 end-0 m-4">
+    <button class="btn btn-warning btn-lg rounded-pill shadow" data-bs-toggle="modal" data-bs-target="#calendarModal">
+      📅 Выбрать дату
+    </button>
+  </div>
+
+  <!-- Модальное окно календаря -->
+  <div class="modal fade" id="calendarModal" tabindex="-1" aria-labelledby="calendarModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content bg-dark text-white">
+        <div class="modal-header">
+          <h5 class="modal-title" id="calendarModalLabel">Выберите дату</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+        </div>
+        <div class="modal-body text-center">
+          <input type="text" id="datePicker" class="form-control w-75 mx-auto">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">Отмена</button>
+          <button type="button" class="btn btn-primary" onclick="submitDate()">Посмотреть</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Навигационная панель -->
   <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-	  <div class="container-fluid">
-	    <div class="dropdown">
-	      <button class="navbar-brand btn btn-link text-white dropdown-toggle no-hover" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-	        Электронный дневник
-	      </button>
-	      <ul class="dropdown-menu">
-	        <li><a class="dropdown-item" href="/student/grades">👩‍🎓 Список учеников</a></li>
-	        <li><a class="dropdown-item" href="/student/grades">📚 Домашнее задание</a></li>
-	      </ul>
-	    </div>
+    <div class="container-fluid">
+      <a class="navbar-brand" href="/">Электронный дневник</a>
+      <div class="d-flex align-items-center gap-2 ms-auto">
+        {% if current_user.is_authenticated %}
+        <span class="navbar-text me-2">
+          {{ current_user.full_name }} (
+          {% if current_user.role_id == 1 %}Администратор
+          {% elif current_user.role_id == 2 %}Учитель
+          {% elif current_user.role_id == 3 %}Родитель
+          {% elif current_user.role_id == 4 %}Ученик
+          {% else %}Неизвестно{% endif %}
+          )
+        </span>
+        <a href="{{ url_for('logout') }}" class="btn btn-outline-light">Выйти</a>
+        {% endif %}
+        <button class="btn btn-outline-light" id="toggle-theme">🌙</button>
+      </div>
+    </div>
+  </nav>
 
-	    <div class="d-flex align-items-center gap-2 ms-auto">
-	      <div class="dropdown">
-	        <button class="btn btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
-	          {{ current_user.role|capitalize }}
-	        </button>
-	        <ul class="dropdown-menu dropdown-menu-end">
-	          <li><a class="dropdown-item" href="#">Ученик</a></li>
-	          <li><a class="dropdown-item" href="#">Учитель</a></li>
-	          <li><a class="dropdown-item" href="#">Администратор</a></li>
-	        </ul>
-	      </div>
+  <!-- Flash-сообщения -->
+  <div class="container my-4">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
 
-	      <div class="dropdown">
-	        <button class="btn btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
-	          {{ current_user.name }}
-	        </button>
-	        <ul class="dropdown-menu dropdown-menu-end">
-	          <li><a class="dropdown-item" href="/logout">Сменить пользователя</a></li>
-	        </ul>
-	      </div>
-
-	      <button class="btn btn-outline-light" id="toggle-theme">🌙</button>
-	    </div>
-	  </div>
-	</nav>
-
-  <div class="container py-5">
-    <div class="card shadow rounded-4 p-4 theme-card dark-mode">
-      <h3 class="mb-4 text-center">Расписание преподавателя</h3>
+    <!-- Расписание преподавателя -->
+    <h2 class="mb-4">Расписание преподавателя</h2>
+    <div class="card shadow rounded-4 p-4">
       <div class="table-responsive">
-        <table class="table table-bordered table-striped align-middle text-center custom-table dark-mode mx-auto w-auto" id="teacher-schedule-table">
-          <thead>
-			  <tr>
-			    <th>Время</th>
-			    <th>Ученик / Группа</th>
-			    <th>Кабинет</th>
-			    <th>Ученики</th>
-			    <th>Домашнее задание на следующий урок</th>
-			  </tr>
-			</thead>
-			<tbody>
-			  {% for lesson in schedule %}
-			  <tr>
-			    <td>{{ lesson.start_time }} – {{ lesson.end_time }}</td>
-			    <td>{{ lesson.student_or_group }}</td>
-			    <td>{{ lesson.classroom }}</td>
-			    <td>
-			      <a href="/mark/{{ lesson.id }}" class="btn btn-sm btn-outline-success">Отметить</a>
-			    </td>
-			    <td>
-			      <a href="/homework/{{ lesson.id }}" class="btn btn-sm btn-outline-primary">Задать</a>
-			    </td>
-			  </tr>
-			  {% else %}
-			  <tr>
-			    <td colspan="5" class="text-muted">На сегодня занятий нет.</td>
-			  </tr>
-			  {% endfor %}
-			</tbody>
+        <table class="table table-bordered table-striped align-middle text-center theme-table">
+          <thead class="table-secondary">
+            <tr>
+              <th>Ученик / Группа</th>
+              <th>Название урока</th>
+              <th>Домашнее задание</th>
+              <th>Домашнее задание на сегодня</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for lesson in schedule %}
+            <tr>
+              <td>{{ lesson.student_or_group }}</td>
+              <td>{{ lesson.subject }}</td>
+              <td>
+                <a href="{{ url_for('homework', group=lesson.student_or_group, subject_id=lesson.subject_id) }}" class="btn btn-sm btn-outline-primary">
+                  Задать
+                </a>
+              </td>
+              <td>{{ lesson.homework_text|default('Нет', true) }}</td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="4" class="text-center">На сегодня занятий нет.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
         </table>
       </div>
     </div>
   </div>
 
+  <!-- Скрипты -->
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ru.js"></script>
   <script>
-    const toggleBtn = document.getElementById('toggle-theme');
-    const html = document.documentElement;
-    const body = document.body;
-    const card = document.querySelector('.theme-card');
-    const table = document.getElementById('teacher-schedule-table');
-
-    toggleBtn.addEventListener('click', () => {
-      const currentTheme = html.getAttribute('data-bs-theme');
-      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-
-      html.setAttribute('data-bs-theme', newTheme);
-      toggleBtn.textContent = newTheme === 'dark' ? '🌙' : '☀️';
-
-      body.classList.toggle('dark-mode', newTheme === 'dark');
-      body.classList.toggle('light-mode', newTheme === 'light');
-
-      card.classList.toggle('dark-mode', newTheme === 'dark');
-      card.classList.toggle('light-mode', newTheme === 'light');
-
-      table.classList.toggle('dark-mode', newTheme === 'dark');
-      table.classList.toggle('light-mode', newTheme === 'light');
+    flatpickr("#datePicker", {
+      dateFormat: "Y-m-d",
+      defaultDate: "{{ selected_date }}",
+      locale: "ru",
+      disableMobile: true,
+      onReady: function (selectedDates, dateStr, instance) {
+        const yearSelect = instance.calendarContainer.querySelector(".numInputWrapper");
+        if (yearSelect) {
+          yearSelect.style.display = "none";
+        }
+      }
     });
+
+    function submitDate() {
+      const date = document.getElementById('datePicker').value;
+      if (date) {
+        window.location.href = `/tr-schedule?date=${date}`;
+        const modal = bootstrap.Modal.getInstance(document.getElementById('calendarModal'));
+        modal.hide();
+      }
+    }
 
     document.addEventListener('DOMContentLoaded', () => {
       const theme = document.documentElement.getAttribute('data-bs-theme');
-      body.classList.add(theme === 'dark' ? 'dark-mode' : 'light-mode');
-      card.classList.add(theme === 'dark' ? 'dark-mode' : 'light-mode');
-      table.classList.add(theme === 'dark' ? 'dark-mode' : 'light-mode');
+      document.querySelectorAll('.theme-table').forEach(table => {
+        table.classList.add(theme === 'dark' ? 'table-dark' : 'table-light');
+      });
+    });
+
+    const toggleBtn = document.getElementById('toggle-theme');
+    toggleBtn.addEventListener('click', () => {
+      const html = document.documentElement;
+      const currentTheme = html.getAttribute('data-bs-theme');
+      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-bs-theme', newTheme);
+      toggleBtn.textContent = newTheme === 'dark' ? '🌙' : '☀️';
+      document.querySelectorAll('.theme-table').forEach(table => {
+        table.classList.remove('table-dark', 'table-light');
+        table.classList.add(newTheme === 'dark' ? 'table-dark' : 'table-light');
+      });
+      document.querySelectorAll('.btn-outline-light, .btn-outline-dark').forEach(btn => {
+        btn.classList.remove('btn-outline-light', 'btn-outline-dark');
+        btn.classList.add(newTheme === 'dark' ? 'btn-outline-light' : 'btn-outline-dark');
+      });
     });
   </script>
 </body>

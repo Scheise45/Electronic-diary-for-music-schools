@@ -26,7 +26,7 @@ class Teacher(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"))
     department_id = Column(Integer, ForeignKey("departments.id"))
-
+    user = relationship("User", backref="teacher")
 
 class Parent(Base):
     __tablename__ = "parents"
