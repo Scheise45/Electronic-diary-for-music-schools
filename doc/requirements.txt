@@ -1,4 +1,7 @@
 Flask>=2.0
 Flask-Login>=0.6
+Flask-RESTful>=0.3
+Flask-WTF>=1.2
 SQLAlchemy>=1.4
+sqlalchemy-serializer>=1.4
 Jinja2>=3.0
