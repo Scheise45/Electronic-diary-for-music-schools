@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="ru" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Кабинет ученика | Музыкальная школа</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css" rel="stylesheet">
+    <style>
+        .btn.no-hover:hover {
+            color: inherit;
+            background-color: inherit;
+            border-color: inherit;
+        }
+        .table-container {
+            margin-bottom: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Кнопка календаря -->
+    <div class="position-fixed bottom-0 end-0 m-4">
+        <button class="btn btn-warning btn-lg rounded-pill shadow" data-bs-toggle="modal" data-bs-target="#calendarModal">
+            📅 Выбрать дату
+        </button>
+    </div>
+
+    <!-- Модальное окно календаря -->
+    <div class="modal fade" id="calendarModal" tabindex="-1" aria-labelledby="calendarModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-white">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="calendarModalLabel">Выберите дату</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <input type="text" id="datePicker" class="form-control w-75 mx-auto">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary" onclick="submitDate()">Посмотреть</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Навигационная панель -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">Электронный дневник</a>
+            <div class="d-flex align-items-center gap-2 ms-auto">
+                {% if current_user.is_authenticated %}
+                <span class="navbar-text me-2">
+                    {{ current_user.full_name }} (
+                    {% if current_user.role_id == 1 %}Администратор
+                    {% elif current_user.role_id == 2 %}Учитель
+                    {% elif current_user.role_id == 3 %}Родитель
+                    {% elif current_user.role_id == 4 %}Ученик
+                    {% else %}Неизвестно{% endif %}
+                    )
+                </span>
+                <a href="{{ url_for('logout') }}" class="btn btn-outline-light">Выйти</a>
+                {% endif %}
+                <button class="btn btn-outline-light" id="toggle-theme">🌙</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Основной контент -->
+    <div class="container my-4">
+        <h2 class="mb-4">Расписание</h2>
+        {% if error_message %}
+        <div class="alert alert-danger" role="alert">{{ error_message }}</div>
+        {% endif %}
+
+        <!-- Понедельник -->
+        <div class="table-container">
+            <button class="btn btn-outline-light no-hover w-100 text-start mb-2" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#monday" aria-expanded="{% if selected_date.weekday() == 0 %}true{% else %}false{% endif %}">
+                Понедельник <span class="date-label" data-day="0"></span>
+            </button>
+            <div class="collapse {% if selected_date.weekday() == 0 %}show{% endif %}" id="monday">
+                <table class="table table-bordered table-hover theme-table">
+                    <thead class="table-secondary">
+                        <tr>
+                            <th>Предмет</th>
+                            <th>Домашнее задание</th>
+                            <th>Преподаватель</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for lesson in monday_schedule %}
+                        <tr>
+                            <td>{{ lesson.subject }}</td>
+                            <td>{{ lesson.homework }}</td>
+                            <td>{{ lesson.teacher }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="3" class="text-center">Нет уроков</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Вторник -->
+        <div class="table-container">
+            <button class="btn btn-outline-light no-hover w-100 text-start mb-2" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#tuesday" aria-expanded="{% if selected_date.weekday() == 1 %}true{% else %}false{% endif %}">
+                Вторник <span class="date-label" data-day="1"></span>
+            </button>
+            <div class="collapse {% if selected_date.weekday() == 1 %}show{% endif %}" id="tuesday">
+                <table class="table table-bordered table-hover theme-table">
+                    <thead class="table-secondary">
+                        <tr>
+                            <th>Предмет</th>
+                            <th>Домашнее задание</th>
+                            <th>Преподаватель</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for lesson in tuesday_schedule %}
+                        <tr>
+                            <td>{{ lesson.subject }}</td>
+                            <td>{{ lesson.homework }}</td>
+                            <td>{{ lesson.teacher }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="3" class="text-center">Нет уроков</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Среда -->
+        <div class="table-container">
+            <button class="btn btn-outline-light no-hover w-100 text-start mb-2" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#wednesday" aria-expanded="{% if selected_date.weekday() == 2 %}true{% else %}false{% endif %}">
+                Среда <span class="date-label" data-day="2"></span>
+            </button>
+            <div class="collapse {% if selected_date.weekday() == 2 %}show{% endif %}" id="wednesday">
+                <table class="table table-bordered table-hover theme-table">
+                    <thead class="table-secondary">
+                        <tr>
+                            <th>Предмет</th>
+                            <th>Домашнее задание</th>
+                            <th>Преподаватель</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for lesson in wednesday_schedule %}
+                        <tr>
+                            <td>{{ lesson.subject }}</td>
+                            <td>{{ lesson.homework }}</td>
+                            <td>{{ lesson.teacher }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="3" class="text-center">Нет уроков</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Четверг -->
+        <div class="table-container">
+            <button class="btn btn-outline-light no-hover w-100 text-start mb-2" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#thursday" aria-expanded="{% if selected_date.weekday() == 3 %}true{% else %}false{% endif %}">
+                Четверг <span class="date-label" data-day="3"></span>
+            </button>
+            <div class="collapse {% if selected_date.weekday() == 3 %}show{% endif %}" id="thursday">
+                <table class="table table-bordered table-hover theme-table">
+                    <thead class="table-secondary">
+                        <tr>
+                            <th>Предмет</th>
+                            <th>Домашнее задание</th>
+                            <th>Преподаватель</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for lesson in thursday_schedule %}
+                        <tr>
+                            <td>{{ lesson.subject }}</td>
+                            <td>{{ lesson.homework }}</td>
+                            <td>{{ lesson.teacher }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="3" class="text-center">Нет уроков</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Пятница -->
+        <div class="table-container">
+            <button class="btn btn-outline-light no-hover w-100 text-start mb-2" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#friday" aria-expanded="{% if selected_date.weekday() == 4 %}true{% else %}false{% endif %}">
+                Пятница <span class="date-label" data-day="4"></span>
+            </button>
+            <div class="collapse {% if selected_date.weekday() == 4 %}show{% endif %}" id="friday">
+                <table class="table table-bordered table-hover theme-table">
+                    <thead class="table-secondary">
+                        <tr>
+                            <th>Предмет</th>
+                            <th>Домашнее задание</th>
+                            <th>Преподаватель</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for lesson in friday_schedule %}
+                        <tr>
+                            <td>{{ lesson.subject }}</td>
+                            <td>{{ lesson.homework }}</td>
+                            <td>{{ lesson.teacher }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="3" class="text-center">Нет уроков</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Суббота -->
+        <div class="table-container">
+            <button class="btn btn-outline-light no-hover w-100 text-start mb-2" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#saturday" aria-expanded="{% if selected_date.weekday() == 5 %}true{% else %}false{% endif %}">
+                Суббота <span class="date-label" data-day="5"></span>
+            </button>
+            <div class="collapse {% if selected_date.weekday() == 5 %}show{% endif %}" id="saturday">
+                <table class="table table-bordered table-hover theme-table">
+                    <thead class="table-secondary">
+                        <tr>
+                            <th>Предмет</th>
+                            <th>Домашнее задание</th>
+                            <th>Преподаватель</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for lesson in saturday_schedule %}
+                        <tr>
+                            <td>{{ lesson.subject }}</td>
+                            <td>{{ lesson.homework }}</td>
+                            <td>{{ lesson.teacher }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="3" class="text-center">Нет уроков</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Воскресенье -->
+        <div class="table-container">
+            <button class="btn btn-outline-light no-hover w-100 text-start mb-2" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#sunday" aria-expanded="{% if selected_date.weekday() == 6 %}true{% else %}false{% endif %}">
+                Воскресенье <span class="date-label" data-day="6"></span>
+            </button>
+            <div class="collapse {% if selected_date.weekday() == 6 %}show{% endif %}" id="sunday">
+                <table class="table table-bordered table-hover theme-table">
+                    <thead class="table-secondary">
+                        <tr>
+                            <th>Предмет</th>
+                            <th>Домашнее задание</th>
+                            <th>Преподаватель</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for lesson in sunday_schedule %}
+                        <tr>
+                            <td>{{ lesson.subject }}</td>
+                            <td>{{ lesson.homework }}</td>
+                            <td>{{ lesson.teacher }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="3" class="text-center">Нет уроков</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Скрипты -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ru.js"></script>
+    <script>
+        function getMonday(d) {
+            d = new Date(d);
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+            return new Date(d.setDate(diff));
+        }
+
+        function formatDate(date) {
+            const dd = String(date.getDate()).padStart(2, '0');
+            const mm = String(date.getMonth() + 1).padStart(2, '0');
+            return `${dd}.${mm}`;
+        }
+
+        function updateWeekDates(baseDate) {
+            const monday = getMonday(new Date(baseDate));
+            document.querySelectorAll('.date-label').forEach(el => {
+                const offset = parseInt(el.getAttribute('data-day'), 10);
+                const dayDate = new Date(monday);
+                dayDate.setDate(monday.getDate() + offset);
+                el.textContent = formatDate(dayDate);
+            });
+        }
+
+        flatpickr("#datePicker", {
+            dateFormat: "Y-m-d",
+            defaultDate: "{{ selected_date_str }}",
+            locale: "ru",
+            disableMobile: true,
+            onReady: function(selectedDates, dateStr, instance) {
+                const yearSelect = instance.calendarContainer.querySelector(".numInputWrapper");
+                if (yearSelect) {
+                    yearSelect.style.display = "none";
+                }
+            }
+        });
+
+        function submitDate() {
+            const date = document.getElementById('datePicker').value;
+            if (date) {
+                window.location.href = `/diary?date=${date}`;
+                const modal = bootstrap.Modal.getInstance(document.getElementById('calendarModal'));
+                modal.hide();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            updateWeekDates(new Date("{{ selected_date_str }}"));
+            const theme = document.documentElement.getAttribute('data-bs-theme');
+            document.querySelectorAll('.theme-table').forEach(table => {
+                table.classList.add(theme === 'dark' ? 'table-dark' : 'table-light');
+            });
+        });
+
+        const toggleBtn = document.getElementById('toggle-theme');
+        toggleBtn.addEventListener('click', () => {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-bs-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-bs-theme', newTheme);
+            toggleBtn.textContent = newTheme === 'dark' ? '🌙' : '☀️';
+            document.querySelectorAll('.theme-table').forEach(table => {
+                table.classList.remove('table-dark', 'table-light');
+                table.classList.add(newTheme === 'dark' ? 'table-dark' : 'table-light');
+            });
+            document.querySelectorAll('.btn-outline-light, .btn-outline-dark').forEach(btn => {
+                btn.classList.remove('btn-outline-light', 'btn-outline-dark');
+                btn.classList.add(newTheme === 'dark' ? 'btn-outline-light' : 'btn-outline-dark');
+            });
+        });
+    </script>
+</body>
+</html>
