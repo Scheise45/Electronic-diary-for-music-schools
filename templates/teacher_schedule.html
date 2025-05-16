@@ -86,28 +86,26 @@
           <thead class="table-secondary">
             <tr>
               <th>Ученик / Группа</th>
-              <th>Ученики</th>
+              <th>Название урока</th>
               <th>Домашнее задание</th>
+              <th>Домашнее задание на сегодня</th>
             </tr>
           </thead>
           <tbody>
             {% for lesson in schedule %}
             <tr>
               <td>{{ lesson.student_or_group }}</td>
+              <td>{{ lesson.subject }}</td>
               <td>
-                <a href="/mark/{{ lesson.id }}" class="btn btn-sm btn-outline-success">
-                  Отметить
-                </a>
-              </td>
-              <td>
-                <a href="/homework/{{ lesson.id }}" class="btn btn-sm btn-outline-primary">
+                <a href="{{ url_for('homework', group=lesson.student_or_group, subject_id=lesson.subject_id) }}" class="btn btn-sm btn-outline-primary">
                   Задать
                 </a>
               </td>
+              <td>{{ lesson.homework_text|default('Нет задания') }}</td>
             </tr>
             {% else %}
             <tr>
-              <td colspan="3" class="text-center">На сегодня занятий нет.</td>
+              <td colspan="4" class="text-center">На сегодня занятий нет.</td>
             </tr>
             {% endfor %}
           </tbody>

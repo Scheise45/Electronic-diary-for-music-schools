@@ -9,12 +9,12 @@ from models import Session as DBSession
 from models.base import engine
 import os
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from jinja2 import TemplateNotFound
 import random
 import string
 import re
-
+from sqlalchemy import func, outerjoin
 # Настройка логирования
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(levelname)s - %(message)s')
@@ -563,39 +563,267 @@ def admin_users_delete(user_id):
 # Управление расписанием (заглушка с пуш-уведомлением)
 
 
-@app.route('/admin/schedule')
+@app.route('/admin_schedule', methods=['GET', 'POST'])
 @login_required
 def admin_schedule():
-    logger.info(
-        f"Попытка открыть /admin/schedule для пользователя {current_user.login}, role_id={current_user.role_id}")
+    logger.info(f"Начало обработки /admin_schedule для пользователя {current_user.login}, role_id={current_user.role_id}")
+    logger.debug(f"Атрибуты current_user: login={current_user.login}, role_id={current_user.role_id}, full_name={current_user.full_name}")
+
+    # Установка role_name
+    logger.debug("Получение role_name")
+    try:
+        role = DBSession().query(Role).filter_by(id=current_user.role_id).first()
+        current_user.role_name = role.name if role else 'Неизвестно'
+        logger.debug(f"Установлен role_name: {current_user.role_name}")
+    except Exception as e:
+        logger.error(f"Ошибка получения role_name: {str(e)}", exc_info=True)
+        current_user.role_name = 'Неизвестно'
+
+    # Проверка прав доступа
+    logger.debug("Проверка прав доступа")
     if current_user.role_id != 1:
         logger.warning(f"Доступ запрещён для role_id: {current_user.role_id}")
         logout_user()
-        flash('Доступ запрещён.', 'danger')
+        flash('Доступ разрешён только администраторам.', 'danger')
         return redirect(url_for('login'))
 
-    logger.info("Отправка пуш-уведомления для /admin/schedule")
-    js_code = """
-    <script>
-        if (Notification.permission === 'granted') {
-            new Notification('Функционал пока не реализован', {
-                body: 'Управление расписанием находится в разработке.',
-                icon: '/static/favicon.ico'
-            });
-        } else if (Notification.permission !== 'denied') {
-            Notification.requestPermission().then(permission => {
-                if (permission === 'granted') {
-                    new Notification('Функционал пока не реализован', {
-                        body: 'Управление расписанием находится в разработке.',
-                        icon: '/static/favicon.ico'
-                    });
-                }
-            });
-        }
-        window.history.back();
-    </script>
-    """
-    return Response(js_code, mimetype='text/html')
+    # Проверка шаблона
+    logger.debug("Проверка шаблона templatesschedule_maker.html")
+    if not template_exists('templatesschedule_maker.html'):
+        logger.error("Шаблон templatesschedule_maker.html отсутствует")
+        return "Шаблон templatesschedule_maker.html не найден", 500
+
+    db_session = DBSession()
+    try:
+        # Получение текущего учебного года
+        logger.debug("Получение текущего учебного года")
+        current_year = db_session.query(SchoolYear).filter_by(id=5).first()
+        if not current_year:
+            logger.error("Учебный год с id=5 не найден")
+            flash('Учебный год 2024-2025 не найден.', 'danger')
+            return render_template(
+                'templatesschedule_maker.html',
+                current_user=current_user,
+                current_year=None,
+                subjects=[],
+                teachers=[],
+                groups=[],
+                schedule=[]
+            )
+        logger.debug(f"Найден учебный год: {current_year.name}, id={current_year.id}")
+
+        # Получение предметов
+        logger.debug("Получение предметов")
+        try:
+            subjects = db_session.query(Subject).all()
+            logger.debug(f"Найдено предметов: {len(subjects)}")
+            for subject in subjects:
+                logger.debug(f"Предмет: id={subject.id}, name={subject.name}")
+        except Exception as e:
+            logger.error(f"Ошибка получения предметов: {str(e)}", exc_info=True)
+            subjects = []
+            flash('Не удалось загрузить предметы.', 'warning')
+
+        # Получение учителей
+        logger.debug("Получение учителей")
+        try:
+            teachers = db_session.query(Teacher).all()
+            logger.debug(f"Найдено учителей: {len(teachers)}")
+            for teacher in teachers:
+                try:
+                    user = db_session.query(User).filter_by(id=teacher.user_id).first()
+                    user_full_name = user.full_name if user else f'Неизвестно (user_id={teacher.user_id})'
+                    logger.debug(f"Учитель: id={teacher.id}, user_id={teacher.user_id}, user_full_name={user_full_name}")
+                except Exception as e:
+                    logger.error(f"Ошибка загрузки user для teacher id={teacher.id}: {str(e)}", exc_info=True)
+                    user_full_name = f'Неизвестно (user_id={teacher.user_id})'
+            teachers = [t for t in teachers if db_session.query(User).filter_by(id=t.user_id).first()]
+            logger.debug(f"Отфильтровано учителей с пользователями: {len(teachers)}")
+        except Exception as e:
+            logger.error(f"Ошибка получения учителей: {str(e)}", exc_info=True)
+            teachers = []
+            flash('Не удалось загрузить учителей.', 'warning')
+
+        # Получение групп из schedule
+        logger.debug("Получение групп из schedule")
+        try:
+            groups = db_session.query(Schedule.class_group, Schedule.class_letter).filter(
+                Schedule.school_year_id == 5,
+                Schedule.class_group.isnot(None),
+                Schedule.class_letter.isnot(None)
+            ).distinct().order_by(Schedule.class_group, Schedule.class_letter).all()
+            logger.debug(f"Найдено групп из schedule: {len(groups)}")
+            for group in groups:
+                logger.debug(f"Группа: class_group={group.class_group}, class_letter={group.class_letter}")
+            if not groups:
+                logger.warning("Группы не найдены в schedule")
+                flash('Группы отсутствуют. Добавьте занятия в расписание.', 'danger')
+        except Exception as e:
+            logger.error(f"Ошибка получения групп: {str(e)}", exc_info=True)
+            groups = []
+            flash('Не удалось загрузить группы. Проверьте настройки базы данных.', 'danger')
+
+        # Получение расписания
+        logger.debug("Получение расписания")
+        try:
+            schedule = db_session.query(Schedule).filter(
+                Schedule.school_year_id == 5
+            ).order_by(
+                Schedule.day_of_week,
+                Schedule.lesson_number,
+                Schedule.class_group,
+                Schedule.class_letter
+            ).all()
+            logger.debug(f"Найдено записей расписания: {len(schedule)}")
+            enriched_schedule = []
+            for lesson in schedule:
+                try:
+                    subject = db_session.query(Subject).filter_by(id=lesson.subject_id).first()
+                    teacher = db_session.query(Teacher).filter_by(id=lesson.teacher_id).first()
+                    user = db_session.query(User).filter_by(id=teacher.user_id).first() if teacher else None
+                    subject_name = subject.name if subject else f'Неизвестно (subject_id={lesson.subject_id})'
+                    teacher_name = user.full_name if user else f'Неизвестно (teacher_id={lesson.teacher_id})'
+                    logger.debug(f"Занятие: id={lesson.id}, day_of_week={lesson.day_of_week}, lesson_number={lesson.lesson_number}, "
+                                f"subject={subject_name}, teacher={teacher_name}, group={lesson.class_group}{lesson.class_letter}")
+                    lesson.subject = subject
+                    lesson.teacher = teacher
+                    if teacher:
+                        teacher.user = user
+                    enriched_schedule.append(lesson)
+                except Exception as e:
+                    logger.error(f"Ошибка обработки занятия id={lesson.id}: {str(e)}", exc_info=True)
+                    continue
+            schedule = enriched_schedule
+            logger.debug(f"Обогащённое расписание: {len(schedule)} записей")
+        except Exception as e:
+            logger.error(f"Ошибка получения расписания: {str(e)}", exc_info=True)
+            schedule = []
+            flash('Не удалось загрузить расписание.', 'warning')
+
+        # Обработка POST-запроса
+        if request.method == 'POST':
+            logger.debug("Обработка POST-запроса")
+            school_year_id = request.form.get('school_year_id')
+            day_of_week = request.form.get('day_of_week')
+            lesson_number = request.form.get('lesson_number')
+            subject_id = request.form.get('subject_id')
+            teacher_id = request.form.get('teacher_id')
+            group = request.form.get('group')
+            logger.debug(f"Получены данные формы: school_year_id={school_year_id}, day_of_week={day_of_week}, "
+                        f"lesson_number={lesson_number}, subject_id={subject_id}, teacher_id={teacher_id}, group={group}")
+
+            # Валидация обязательных полей
+            if not all([school_year_id, day_of_week, lesson_number, subject_id, teacher_id, group]):
+                logger.warning("Недостаточно данных в форме")
+                flash('Заполните все обязательные поля.', 'warning')
+                return render_template(
+                    'templatesschedule_maker.html',
+                    current_user=current_user,
+                    current_year=current_year,
+                    subjects=subjects,
+                    teachers=teachers,
+                    groups=groups,
+                    schedule=schedule
+                )
+
+            # Обработка группы
+            logger.debug("Обработка группы")
+            try:
+                class_group, class_letter = group.split('-')
+                class_group = int(class_group)
+                logger.debug(f"Группа разобрана: class_group={class_group}, class_letter={class_letter}")
+            except ValueError:
+                logger.error(f"Неверный формат группы: {group}")
+                flash('Неверный формат группы.', 'danger')
+                return render_template(
+                    'templatesschedule_maker.html',
+                    current_user=current_user,
+                    current_year=current_year,
+                    subjects=subjects,
+                    teachers=teachers,
+                    groups=groups,
+                    schedule=schedule
+                )
+
+            # Создание записи
+            logger.debug("Создание записи в schedule")
+            try:
+                new_lesson = Schedule(
+                    school_year_id=int(school_year_id),
+                    day_of_week=int(day_of_week),
+                    lesson_number=int(lesson_number),
+                    class_group=class_group,
+                    class_letter=class_letter,
+                    subject_id=int(subject_id),
+                    teacher_id=int(teacher_id)
+                )
+                db_session.add(new_lesson)
+                db_session.commit()
+                logger.info(f"Добавлено занятие: day_of_week={day_of_week}, lesson_number={lesson_number}, "
+                           f"subject_id={subject_id}, teacher_id={teacher_id}, group={group}")
+            except Exception as e:
+                logger.error(f"Ошибка добавления занятия: {str(e)}", exc_info=True)
+                flash('Ошибка при добавлении занятия.', 'danger')
+                return render_template(
+                    'templatesschedule_maker.html',
+                    current_user=current_user,
+                    current_year=current_year,
+                    subjects=subjects,
+                    teachers=teachers,
+                    groups=groups,
+                    schedule=schedule
+                )
+
+            flash('Занятие успешно добавлено!', 'success')
+            return redirect(url_for('admin_schedule'))
+
+        # GET: отображение формы
+        logger.debug("Рендеринг шаблона для GET-запроса")
+        try:
+            logger.debug(f"Передаваемые данные в шаблон: current_user={current_user.login}, "
+                        f"current_year={current_year.name if current_year else None}, "
+                        f"subjects_count={len(subjects)}, teachers_count={len(teachers)}, "
+                        f"groups_count={len(groups)}, schedule_count={len(schedule)}")
+            return render_template(
+                'templatesschedule_maker.html',
+                current_user=current_user,
+                current_year=current_year,
+                subjects=subjects,
+                teachers=teachers,
+                groups=groups,
+                schedule=schedule
+            )
+        except Exception as e:
+            logger.error(f"Ошибка рендеринга шаблона: {str(e)}", exc_info=True)
+            flash('Ошибка при отображении страницы.', 'danger')
+            return render_template(
+                'templatesschedule_maker.html',
+                current_user=current_user,
+                current_year=None,
+                subjects=[],
+                teachers=[],
+                groups=[],
+                schedule=[]
+            )
+
+    except Exception as e:
+        logger.error(f"Критическая ошибка в admin_schedule: {str(e)}", exc_info=True)
+        flash('Произошла ошибка при обработке запроса.', 'danger')
+        return render_template(
+            'templatesschedule_maker.html',
+            current_user=current_user,
+            current_year=None,
+            subjects=[],
+            teachers=[],
+            groups=[],
+            schedule=[]
+        )
+    finally:
+        logger.debug("Закрытие сессии базы данных")
+        try:
+            db_session.close()
+        except Exception as e:
+            logger.error(f"Ошибка закрытия сессии: {str(e)}", exc_info=True)
 
 # Страница расписания преподавателя
 
@@ -642,7 +870,7 @@ def tr_schedule():
             selected_date = datetime.now().date()
 
         # Проверка учебного года
-        current_year = db_session.query(SchoolYear).order_by(SchoolYear.id.desc()).first()
+        current_year = db_session.query(SchoolYear).filter_by(id=5).first()
         if not current_year:
             logger.error("Текущий учебный год не найден")
             flash('Учебный год не задан.', 'danger')
@@ -671,18 +899,39 @@ def tr_schedule():
         ).filter(
             Schedule.school_year_id == current_year.id,
             Schedule.teacher_id == teacher.id,
-            Schedule.day_of_week == selected_date.weekday()  # 0=понедельник, 6=воскресенье
+            Schedule.day_of_week == selected_date.weekday() + 1  # 1=понедельник, 7=воскресенье
         ).order_by(Schedule.lesson_number).all()
 
         logger.debug(f"Найдено {len(schedule_items)} записей в расписании для teacher_id={teacher.id}")
 
         schedule = []
         for s, sub in schedule_items:
+            group = f"{s.class_group}{s.class_letter}"
+            # Поиск домашнего задания на выбранную дату
+            try:
+                class_group = s.class_group
+                class_letter = s.class_letter
+                homework = db_session.query(Homework).filter(
+                    Homework.school_year_id == current_year.id,
+                    Homework.date == selected_date,
+                    Homework.class_group == class_group,
+                    Homework.class_letter == class_letter,
+                    Homework.subject_id == s.subject_id
+                ).first()
+                homework_text = homework.text if homework else None
+                logger.debug(f"Задание для group={group}, subject_id={s.subject_id}, date={selected_date}: {homework_text}")
+            except Exception as e:
+                logger.error(f"Ошибка поиска домашнего задания для group={group}, subject_id={s.subject_id}: {str(e)}", exc_info=True)
+                homework_text = None
+
             schedule.append({
                 'id': s.id,
-                'student_or_group': f"{s.class_group}{s.class_letter}",
-                'subject': sub.name
+                'student_or_group': group,
+                'subject': sub.name,
+                'subject_id': s.subject_id,
+                'homework_text': homework_text
             })
+            logger.debug(f"Запись расписания: id={s.id}, group={group}, subject={sub.name}, subject_id={s.subject_id}, homework_text={homework_text}")
 
         logger.info(f"Рендеринг teacher_schedule.html для пользователя {current_user.login}")
         return render_template(
@@ -707,6 +956,401 @@ def tr_schedule():
     finally:
         db_session.close()
 
+def ru_month_filter(date_str):
+    months = {
+        'January': 'января',
+        'February': 'февраля',
+        'March': 'марта',
+        'April': 'апреля',
+        'May': 'мая',
+        'June': 'июня',
+        'July': 'июля',
+        'August': 'августа',
+        'September': 'сентября',
+        'October': 'октября',
+        'November': 'ноября',
+        'December': 'декабря'
+    }
+    for eng, rus in months.items():
+        date_str = date_str.replace(eng, rus)
+    return date_str
+
+app.jinja_env.filters['ru_month'] = ru_month_filter
+
+@app.route('/homework', methods=['GET', 'POST'])
+@login_required
+def homework():
+    logger.info(f"Попытка открыть /homework для пользователя {current_user.login}, role_id={current_user.role_id}")
+
+    # Установка role_name
+    try:
+        role = DBSession().query(Role).filter_by(id=current_user.role_id).first()
+        current_user.role_name = role.name if role else 'Неизвестно'
+        logger.debug(f"Установлен role_name: {current_user.role_name}")
+    except Exception as e:
+        logger.error(f"Ошибка получения role_name: {str(e)}")
+        current_user.role_name = 'Неизвестно'
+
+    # Проверка прав доступа
+    if current_user.role_id != 2:
+        logger.warning(f"Доступ запрещён для role_id: {current_user.role_id}")
+        flash('Доступ разрешён только учителям.', 'danger')
+        return redirect(url_for('login'))
+
+    # Проверка шаблона
+    if not template_exists('teacher_hw.html'):
+        logger.error("Шаблон teacher_hw.html отсутствует")
+        return "Шаблон teacher_hw.html не найден", 500
+
+    db_session = DBSession()
+    try:
+        # Получение текущего учебного года
+        current_year = db_session.query(SchoolYear).filter_by(id=5).first()
+        if not current_year:
+            logger.error("Учебный год с id=5 не найден")
+            flash('Учебный год 2024-2025 не найден.', 'danger')
+            return render_template(
+                'teacher_hw.html',
+                current_user=current_user,
+                groups=[],
+                subjects=[],
+                selected_group=None,
+                selected_subject_id=None,
+                existing_homework='',
+                lesson_date=None,
+                is_editing=False
+            )
+
+        # Получение teacher_id
+        teacher = db_session.query(Teacher).filter_by(user_id=current_user.id).first()
+        if not teacher:
+            logger.error(f"Пользователь {current_user.login} (user_id={current_user.id}) не является учителем")
+            flash('Вы не зарегистрированы как преподаватель.', 'danger')
+            return render_template(
+                'teacher_hw.html',
+                current_user=current_user,
+                groups=[],
+                subjects=[],
+                selected_group=None,
+                selected_subject_id=None,
+                existing_homework='',
+                lesson_date=None,
+                is_editing=False
+            )
+
+        # Получение групп из schedule
+        try:
+            groups = db_session.query(Schedule.class_group, Schedule.class_letter).filter(
+                Schedule.school_year_id == current_year.id,
+                Schedule.class_group.isnot(None),
+                Schedule.class_letter.isnot(None)
+            ).distinct().order_by(Schedule.class_group, Schedule.class_letter).all()
+            groups = [f"{g.class_group}{g.class_letter}" for g in groups]
+            logger.debug(f"Найдено групп: {len(groups)}: {groups}")
+            if not groups:
+                logger.warning("Группы не найдены в schedule")
+                flash('Группы отсутствуют. Добавьте занятия в расписание.', 'danger')
+        except Exception as e:
+            logger.error(f"Ошибка получения групп: {str(e)}", exc_info=True)
+            groups = []
+            flash('Не удалось загрузить группы.', 'warning')
+
+        # Получение предвыбранной группы и предмета из URL
+        selected_group = request.args.get('group')
+        selected_subject_id = request.args.get('subject_id', type=int)
+        if selected_group and selected_group not in groups:
+            logger.warning(f"Группа {selected_group} не найдена в списке групп")
+            selected_group = None
+
+        # Получение предметов для учителя
+        try:
+            subjects = db_session.query(Subject).join(
+                Schedule, Schedule.subject_id == Subject.id
+            ).filter(
+                Schedule.school_year_id == current_year.id,
+                Schedule.teacher_id == teacher.id
+            ).distinct().all()
+            logger.debug(f"Найдено предметов для учителя: {len(subjects)}")
+            for subject in subjects:
+                logger.debug(f"Предмет: id={subject.id}, name={subject.name}")
+            if selected_subject_id and not any(s.id == selected_subject_id for s in subjects):
+                logger.warning(f"Предмет ID {selected_subject_id} не найден для учителя")
+                selected_subject_id = None
+        except Exception as e:
+            logger.error(f"Ошибка получения предметов: {str(e)}", exc_info=True)
+            subjects = []
+            flash('Не удалось загрузить предметы.', 'warning')
+
+        # Инициализация переменных
+        existing_homework = ''
+        lesson_date = None
+        is_editing = False
+
+        # Функция для поиска следующего урока
+        def find_next_lesson(class_group, class_letter, subject_id, teacher_id, current_date, current_time):
+            lessons = db_session.query(Schedule).filter(
+                Schedule.school_year_id == current_year.id,
+                Schedule.class_group == class_group,
+                Schedule.class_letter == class_letter,
+                Schedule.subject_id == subject_id,
+                Schedule.teacher_id == teacher_id
+            ).order_by(Schedule.day_of_week, Schedule.lesson_number).all()
+
+            if not lessons:
+                return None, None
+
+            current_weekday = current_date.weekday()  # 0=понедельник, 6=воскресенье
+            next_lesson = None
+            min_days_ahead = float('inf')
+
+            for lesson in lessons:
+                lesson_weekday = lesson.day_of_week - 1  # Schedule.day_of_week: 1=понедельник
+                days_ahead = (lesson_weekday - current_weekday) % 7
+                # Если урок сегодня, но время после 18:00, считаем его на следующей неделе
+                if days_ahead == 0 and current_time > datetime.strptime("18:00", "%H:%M").time():
+                    days_ahead = 7
+                # Если урок в прошлом (отрицательное days_ahead), добавляем неделю
+                if days_ahead < 0:
+                    days_ahead += 7
+                # Выбираем урок с минимальным количеством дней вперёд
+                if days_ahead < min_days_ahead and days_ahead > 0:  # Исключаем текущий день
+                    min_days_ahead = days_ahead
+                    next_lesson = lesson
+
+            if not next_lesson:
+                # Если не нашли урок в будущем, берём ближайший на следующей неделе
+                for lesson in lessons:
+                    lesson_weekday = lesson.day_of_week - 1
+                    days_ahead = (lesson_weekday - current_weekday) % 7
+                    if days_ahead < min_days_ahead:
+                        min_days_ahead = days_ahead
+                        next_lesson = lesson
+                if next_lesson:
+                    lesson_date = current_date + timedelta(days=min_days_ahead + 7)
+                else:
+                    return None, None
+            else:
+                lesson_date = current_date + timedelta(days=min_days_ahead)
+
+            return next_lesson, lesson_date
+
+        # GET: поиск следующего урока и существующего задания
+        if selected_group and selected_subject_id:
+            try:
+                class_group = int(selected_group[:-1])
+                class_letter = selected_group[-1]
+                logger.debug(f"Группа разобрана: class_group={class_group}, class_letter={class_letter}")
+
+                current_date = datetime.now().date()
+                current_time = datetime.now().time()
+                next_lesson, lesson_date = find_next_lesson(
+                    class_group, class_letter, selected_subject_id, teacher.id, current_date, current_time
+                )
+
+                if next_lesson and lesson_date:
+                    logger.debug(f"Следующий урок: schedule_id={next_lesson.id}, date={lesson_date}, subject_id={selected_subject_id}")
+
+                    # Проверка существующего задания
+                    existing_assignment = db_session.query(Homework).filter(
+                        Homework.school_year_id == current_year.id,
+                        Homework.date == lesson_date,
+                        Homework.class_group == class_group,
+                        Homework.class_letter == class_letter,
+                        Homework.subject_id == selected_subject_id
+                    ).first()
+
+                    if existing_assignment:
+                        existing_homework = existing_assignment.text
+                        is_editing = True
+                        logger.debug(f"Найдено существующее задание: id={existing_assignment.id}, text={existing_homework}")
+                else:
+                    logger.warning(f"Будущий урок для группы {selected_group}, предмета {selected_subject_id} не найден")
+                    flash('Следующий урок не найден.', 'warning')
+
+            except ValueError:
+                logger.error(f"Неверный формат группы: {selected_group}")
+                flash('Неверный формат группы.', 'warning')
+            except Exception as e:
+                logger.error(f"Ошибка поиска урока или задания: {str(e)}", exc_info=True)
+                flash('Не удалось найти следующий урок.', 'warning')
+
+        if request.method == 'POST':
+            logger.debug("Обработка POST-запроса для добавления/редактирования домашнего задания")
+            group = request.form.get('group')
+            subject_id = request.form.get('subject_id', type=int)
+            homework_text = request.form.get('homework')
+
+            # Валидация
+            if not group or not subject_id or not homework_text:
+                logger.warning("Недостаточно данных в форме")
+                flash('Заполните все поля.', 'warning')
+                return render_template(
+                    'teacher_hw.html',
+                    current_user=current_user,
+                    groups=groups,
+                    subjects=subjects,
+                    selected_group=group,
+                    selected_subject_id=subject_id,
+                    existing_homework=homework_text,
+                    lesson_date=lesson_date,
+                    is_editing=is_editing
+                )
+
+            if group not in groups:
+                logger.error(f"Недопустимая группа: {group}")
+                flash('Выбрана недопустимая группа.', 'danger')
+                return render_template(
+                    'teacher_hw.html',
+                    current_user=current_user,
+                    groups=groups,
+                    subjects=subjects,
+                    selected_group=group,
+                    selected_subject_id=subject_id,
+                    existing_homework=homework_text,
+                    lesson_date=lesson_date,
+                    is_editing=is_editing
+                )
+
+            if not any(s.id == subject_id for s in subjects):
+                logger.error(f"Недопустимый предмет ID: {subject_id}")
+                flash('Выбран недопустимый предмет.', 'danger')
+                return render_template(
+                    'teacher_hw.html',
+                    current_user=current_user,
+                    groups=groups,
+                    subjects=subjects,
+                    selected_group=group,
+                    selected_subject_id=subject_id,
+                    existing_homework=homework_text,
+                    lesson_date=lesson_date,
+                    is_editing=is_editing
+                )
+
+            # Разбор группы
+            try:
+                class_group = int(group[:-1])
+                class_letter = group[-1]
+                logger.debug(f"Группа разобрана: class_group={class_group}, class_letter={class_letter}")
+            except ValueError:
+                logger.error(f"Неверный формат группы: {group}")
+                flash('Неверный формат группы.', 'danger')
+                return render_template(
+                    'teacher_hw.html',
+                    current_user=current_user,
+                    groups=groups,
+                    subjects=subjects,
+                    selected_group=group,
+                    selected_subject_id=subject_id,
+                    existing_homework=homework_text,
+                    lesson_date=lesson_date,
+                    is_editing=is_editing
+                )
+
+            # Поиск следующего урока
+            try:
+                current_date = datetime.now().date()
+                current_time = datetime.now().time()
+                next_lesson, lesson_date = find_next_lesson(
+                    class_group, class_letter, subject_id, teacher.id, current_date, current_time
+                )
+
+                if not next_lesson or not lesson_date:
+                    logger.error(f"Будущий урок для группы {group}, предмета {subject_id} не найден")
+                    flash('Следующий урок для группы и предмета не найден.', 'danger')
+                    return render_template(
+                        'teacher_hw.html',
+                        current_user=current_user,
+                        groups=groups,
+                        subjects=subjects,
+                        selected_group=group,
+                        selected_subject_id=subject_id,
+                        existing_homework=homework_text,
+                        lesson_date=lesson_date,
+                        is_editing=is_editing
+                    )
+
+                logger.debug(f"Следующий урок: schedule_id={next_lesson.id}, date={lesson_date}, day_of_week={next_lesson.day_of_week}, lesson_number={next_lesson.lesson_number}, subject_id={subject_id}")
+
+                # Проверка существующего задания
+                existing_assignment = db_session.query(Homework).filter(
+                    Homework.school_year_id == current_year.id,
+                    Homework.date == lesson_date,
+                    Homework.class_group == class_group,
+                    Homework.class_letter == class_letter,
+                    Homework.subject_id == subject_id
+                ).first()
+
+                if existing_assignment:
+                    # Обновление существующего задания
+                    existing_assignment.text = homework_text
+                    logger.info(f"Обновлено домашнее задание: id={existing_assignment.id}, group={group}, subject_id={subject_id}, date={lesson_date}")
+                    flash('Домашнее задание успешно обновлено!', 'success')
+                else:
+                    # Создание нового задания
+                    new_homework = Homework(
+                        school_year_id=current_year.id,
+                        date=lesson_date,
+                        class_group=class_group,
+                        class_letter=class_letter,
+                        subject_id=subject_id,
+                        text=homework_text
+                    )
+                    db_session.add(new_homework)
+                    logger.info(f"Добавлено новое домашнее задание: group={group}, subject_id={subject_id}, date={lesson_date}")
+                    flash('Домашнее задание успешно добавлено!', 'success')
+
+                db_session.commit()
+                return redirect(url_for('tr_schedule'))
+
+            except Exception as e:
+                logger.error(f"Ошибка добавления/редактирования домашнего задания: {str(e)}", exc_info=True)
+                flash('Ошибка при сохранении домашнего задания.', 'danger')
+                return render_template(
+                    'teacher_hw.html',
+                    current_user=current_user,
+                    groups=groups,
+                    subjects=subjects,
+                    selected_group=group,
+                    selected_subject_id=subject_id,
+                    existing_homework=homework_text,
+                    lesson_date=lesson_date,
+                    is_editing=is_editing
+                )
+
+        # GET: отображение формы
+        logger.debug("Рендеринг teacher_hw.html")
+        return render_template(
+            'teacher_hw.html',
+            current_user=current_user,
+            groups=groups,
+            subjects=subjects,
+            selected_group=selected_group,
+            selected_subject_id=selected_subject_id,
+            existing_homework=existing_homework,
+            lesson_date=lesson_date,
+            is_editing=is_editing
+        )
+
+    except Exception as e:
+        logger.error(f"Критическая ошибка в homework: {str(e)}", exc_info=True)
+        flash('Произошла ошибка при обработке запроса.', 'danger')
+        return render_template(
+            'teacher_hw.html',
+            current_user=current_user,
+            groups=[],
+            subjects=[],
+            selected_group=None,
+            selected_subject_id=None,
+            existing_homework='',
+            lesson_date=None,
+            is_editing=False
+        )
+    finally:
+        logger.debug("Закрытие сессии базы данных")
+        try:
+            db_session.close()
+        except Exception as e:
+            logger.error(f"Ошибка закрытия сессии: {str(e)}", exc_info=True)
 
 # Страница дневника
 @app.route('/diary')

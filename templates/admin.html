@@ -45,11 +45,9 @@
     <ul class="list-group">
       <li class="list-group-item">
         <a href="{{ url_for('admin_users') }}" class="text-decoration-none">👥 Управление пользователями</a>
-        <!-- TODO: Реализовать маршрут /admin/users -->
       </li>
       <li class="list-group-item">
-        <a class="text-decoration-none notify-link" role="button">📅 Управление расписанием</a>
-        <!-- TODO: Реализовать маршрут /admin/schedule -->
+        <a href="{{ url_for('admin_schedule') }}" class="text-decoration-none">📅 Управление расписанием</a>
       </li>
     </ul>
   </div>
@@ -76,29 +74,6 @@
       const theme = document.documentElement.getAttribute('data-bs-theme');
       document.querySelectorAll('.theme-table').forEach(table => {
         table.classList.add(theme === 'dark' ? 'table-dark' : 'table-light');
-      });
-
-      // Обработка пуш-уведомлений для кнопок
-      const notifyLinks = document.querySelectorAll('.notify-link');
-      notifyLinks.forEach(link => {
-        link.addEventListener('click', (e) => {
-          e.preventDefault(); // Предотвращаем переход по ссылке
-          if (Notification.permission === 'granted') {
-            new Notification('Функционал пока не реализован', {
-              body: 'Эта функция находится в разработке.',
-              icon: '/static/favicon.ico' // Опционально, если есть favicon
-            });
-          } else if (Notification.permission !== 'denied') {
-            Notification.requestPermission().then(permission => {
-              if (permission === 'granted') {
-                new Notification('Функционал пока не реализован', {
-                  body: 'Эта функция находится в разработке.',
-                  icon: '/static/favicon.ico'
-                });
-              }
-            });
-          }
-        });
       });
     });
   </script>
